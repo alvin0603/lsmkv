@@ -15,6 +15,7 @@ target_include_directories(catch2 PUBLIC
 )
 add_library(lsmkv STATIC
     src/coding.cpp
+    src/internal_key.cpp
 )
 target_include_directories(lsmkv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -25,6 +26,7 @@ enable_testing()
 add_executable(lsmkv_tests
     tests/dummy_test.cpp
     tests/coding_test.cpp
+    tests/internal_key_test.cpp
 )
 target_link_libraries(lsmkv_tests PRIVATE catch2 lsmkv)
 
