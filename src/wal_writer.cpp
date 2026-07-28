@@ -5,10 +5,11 @@
 #include <fcntl.h>
 #include <string>
 #include <unistd.h>
-#include <limits>
 
 namespace lsmkv
 {
+    constexpr std::uint32_t kMaxWalPayloadSize = 64 * 1024 * 1024;
+
     WalWriter::WalWriter(std::string_view path, SyncMode sync_mode, std::size_t sync_interval)
     {
         sync_mode_ = sync_mode;
@@ -60,7 +61,7 @@ namespace lsmkv
             return false;
         if(!appendLengthPrefixedSlice(payload, value))
             return false;
-        if(payload.size() > std::numeric_limits<std::uint32_t>::max())
+        if(payload.size() > kMaxWalPayloadSize)
             return false;
         std::string record;
         appendFixed32(record, calculateCrc32(payload));

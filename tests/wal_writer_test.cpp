@@ -18,23 +18,19 @@ TEST_CASE("WalWriter appends records in WAL format", "[wal-writer]")
         REQUIRE(writer.append(7, lsmkv::ValueType::kPut, "cat", "red"));
         REQUIRE(writer.append(8, lsmkv::ValueType::kDelete, "cat", ""));
     }
-
     std::ifstream file(path, std::ios::binary);
     REQUIRE(file.is_open());
     const std::string file_data{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-
     std::string first_payload;
     first_payload.push_back(static_cast<char>(lsmkv::ValueType::kPut));
     lsmkv::appendFixed64(first_payload, 7);
     REQUIRE(lsmkv::appendLengthPrefixedSlice(first_payload, "cat"));
     REQUIRE(lsmkv::appendLengthPrefixedSlice(first_payload, "red"));
-
     std::string second_payload;
     second_payload.push_back(static_cast<char>(lsmkv::ValueType::kDelete));
     lsmkv::appendFixed64(second_payload, 8);
     REQUIRE(lsmkv::appendLengthPrefixedSlice(second_payload, "cat"));
     REQUIRE(lsmkv::appendLengthPrefixedSlice(second_payload, ""));
-
     std::string expected;
     lsmkv::appendFixed32(expected, lsmkv::calculateCrc32(first_payload));
     lsmkv::appendFixed32(expected, static_cast<std::uint32_t>(first_payload.size()));
@@ -42,7 +38,6 @@ TEST_CASE("WalWriter appends records in WAL format", "[wal-writer]")
     lsmkv::appendFixed32(expected, lsmkv::calculateCrc32(second_payload));
     lsmkv::appendFixed32(expected, static_cast<std::uint32_t>(second_payload.size()));
     expected.append(second_payload);
-
     REQUIRE(file_data == expected);
     file.close();
     std::filesystem::remove(path);
