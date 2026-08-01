@@ -19,6 +19,7 @@ add_library(lsmkv STATIC
     src/memtable.cpp
     src/wal_writer.cpp
     src/wal_reader.cpp
+    src/db.cpp
 )
 target_include_directories(lsmkv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -33,6 +34,7 @@ add_executable(lsmkv_tests
     tests/memtable_test.cpp
     tests/wal_writer_test.cpp
     tests/wal_reader_test.cpp
+    tests/db_test.cpp
 )
 target_link_libraries(lsmkv_tests PRIVATE catch2 lsmkv)
 
