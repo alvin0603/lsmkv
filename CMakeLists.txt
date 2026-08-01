@@ -21,6 +21,7 @@ add_library(lsmkv STATIC
     src/wal_reader.cpp
     src/db.cpp
     src/sstable_writer.cpp
+    src/sstable_reader.cpp
 )
 target_include_directories(lsmkv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -37,6 +38,7 @@ add_executable(lsmkv_tests
     tests/wal_reader_test.cpp
     tests/db_test.cpp
     tests/sstable_writer_test.cpp
+    tests/sstable_reader_test.cpp
 )
 add_executable(sstable_dump
     tools/sstable_dump.cpp
