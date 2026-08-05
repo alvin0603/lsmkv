@@ -1,6 +1,7 @@
 #include <lsmkv/db.h>
 #include <lsmkv/wal_reader.h>
 #include <lsmkv/sstable_writer.h>
+#include "internal/file_names.h"
 
 #include <fcntl.h>
 #include <filesystem>
@@ -9,7 +10,6 @@
 #include <sys/file.h>
 #include <unistd.h>
 #include <algorithm>
-#include <charconv>
 #include <cstdint>
 #include <vector>
 #include <iterator>
@@ -23,34 +23,6 @@ namespace
         std::uint64_t epoch;
         std::filesystem::path path;
     };
-    bool parseWalEpoch(const std::filesystem::path& path, std::uint64_t& epoch)
-    {
-        if(path.extension() != ".wal")
-            return false;
-        const std::string stem = path.stem().string();
-        if(stem.empty())
-            return false;
-        const auto result = std::from_chars(stem.data(), stem.data() + stem.size(), epoch);
-        if(result.ec != std::errc{} || result.ptr != stem.data() + stem.size())
-            return false;
-        if(epoch == 0)
-            return false;
-        return true;
-    }
-    bool parseSSTableFileId(const std::filesystem::path& path, std::uint64_t& file_id)
-    {
-        if(path.extension() != ".sst")
-            return false;
-        const std::string stem = path.stem().string();
-        if(stem.empty())
-            return false;
-        const auto result = std::from_chars(stem.data(), stem.data() + stem.size(), file_id);
-        if(result.ec != std::errc{} || result.ptr != stem.data() + stem.size())
-            return false;
-        if(file_id == 0)
-            return false;
-        return true;
-    }
 }
 
 namespace lsmkv
@@ -89,7 +61,7 @@ namespace lsmkv
             return nullptr;
         
         // create and lock the lock file
-        const std::filesystem::path lock_path = directory / "LOCK";
+        const std::filesystem::path lock_path = lockFilePath(directory);
         const std::string lock_path_string = lock_path.string();
         db->lock_fd_ = ::open(lock_path_string.c_str(), O_RDWR | O_CREAT, 0644);
         if(db->lock_fd_ == -1)
@@ -104,7 +76,7 @@ namespace lsmkv
         for(const TableMetaData& table : db->manifest_state_.tables)
         {
             live_table_ids.insert(table.file_id);
-            const std::filesystem::path table_path = directory / (std::to_string(table.file_id) + ".sst");
+            const std::filesystem::path table_path = sstableFilePath(directory, table.file_id);
             std::error_code table_error;
             if(!std::filesystem::is_regular_file(table_path, table_error) || table_error)
                 return nullptr;
@@ -176,7 +148,7 @@ namespace lsmkv
             db->active_wal_epoch_ = wal_files.back().epoch;
 
         // open the active WAL writer
-        const std::filesystem::path wal_path = directory / (std::to_string(db->active_wal_epoch_) + ".wal");
+        const std::filesystem::path wal_path = walFilePath(directory, db->active_wal_epoch_);
         db->wal_writer_ = std::make_unique<WalWriter>(wal_path.string(), db->sync_mode_, db->sync_interval_);
         if(!db->wal_writer_->isOpen())
             return nullptr;
@@ -245,7 +217,7 @@ namespace lsmkv
         // create a new WAL file
         const std::uint64_t immutable_wal_epoch = active_wal_epoch_;
         const std::uint64_t new_wal_epoch = active_wal_epoch_ + 1;
-        const std::filesystem::path new_wal_path = std::filesystem::path(directory_) / (std::to_string(new_wal_epoch) + ".wal");
+        const std::filesystem::path new_wal_path = walFilePath(std::filesystem::path(directory_), new_wal_epoch);
         auto new_wal_writer = std::make_unique<WalWriter>(new_wal_path.string(), sync_mode_, sync_interval_);
         if(!new_wal_writer->isOpen())
             return false;
@@ -258,7 +230,7 @@ namespace lsmkv
 
         // write the immutable memtable to the new SSTable
         const std::uint64_t table_id = manifest_state_.next_file_id;
-        const std::filesystem::path table_path = std::filesystem::path(directory_) / (std::to_string(table_id) + ".sst");
+        const std::filesystem::path table_path = sstableFilePath(std::filesystem::path(directory_), table_id);
         bool table_written = false;
         {
             SSTableWriter writer(table_path.string());
@@ -306,7 +278,7 @@ namespace lsmkv
         if(!saveManifest(directory_, tmp_manifest_state))
             return false;
         manifest_state_ = std::move(tmp_manifest_state);
-        const std::filesystem::path immutable_wal_path = std::filesystem::path(directory_) / (std::to_string(immutable_wal_epoch) + ".wal");
+        const std::filesystem::path immutable_wal_path = walFilePath(std::filesystem::path(directory_), immutable_wal_epoch);
         std::error_code remove_error;
         std::filesystem::remove(immutable_wal_path, remove_error);
         immutable_memtable_.reset();

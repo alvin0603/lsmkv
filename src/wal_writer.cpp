@@ -1,7 +1,7 @@
 #include <lsmkv/wal_writer.h>
 #include <lsmkv/coding.h>
+#include "internal/file_io.h"
 
-#include <cerrno>
 #include <fcntl.h>
 #include <string>
 #include <unistd.h>
@@ -28,26 +28,6 @@ namespace lsmkv
     {
         return fd_ != -1;
     }
-    bool WalWriter::writeAll(std::string_view data)
-    {
-        if(fd_ == -1)
-            return false;
-        std::size_t written = 0;
-        while(written < data.size())
-        {
-            const ssize_t result = ::write(fd_, data.data() + written, data.size() - written);
-            if(result == -1)
-            {
-                if(errno == EINTR)
-                    continue; // signal interrupt
-                return false;
-            }
-            if(result == 0)
-                return false;
-            written += static_cast<std::size_t>(result);
-        }
-        return true;
-    }
     bool WalWriter::append(std::uint64_t sequence, ValueType type, std::string_view user_key, std::string_view value)
     {
         if(fd_ == -1)
@@ -67,7 +47,7 @@ namespace lsmkv
         appendFixed32(record, calculateCrc32(payload));
         appendFixed32(record, static_cast<std::uint32_t>(payload.size()));
         record.append(payload);
-        if(!writeAll(record))
+        if(!writeAll(fd_, record))
             return false;
         writes_since_last_sync_++;
         if(sync_mode_ == SyncMode::kSyncEveryWrite)
@@ -80,12 +60,8 @@ namespace lsmkv
     {
         if(fd_ == -1)
             return false;
-        while(::fsync(fd_) == -1)
-        {
-            if(errno == EINTR)
-                continue; 
+        if(!syncFile(fd_))
             return false;
-        }
         writes_since_last_sync_ = 0;
         return true;
     }

@@ -23,14 +23,6 @@ namespace lsmkv
             bool isOpen() const;
             bool replay(MemTable& memtable, WalReplayResult& result);
         private:
-            enum class ReadResult
-            {
-                kComplete,
-                kEnd,
-                kPartial,
-                kError
-            };
-            ReadResult readExact(char* output, std::size_t size);
             bool truncate(std::uint64_t size);
             int fd_ = -1;
     };

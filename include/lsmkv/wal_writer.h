@@ -26,7 +26,6 @@ namespace lsmkv
             bool append(std::uint64_t sequence, ValueType type, std::string_view user_key, std::string_view value);
             bool sync();
         private:
-            bool writeAll(std::string_view data);
             int fd_ = -1;
             SyncMode sync_mode_;
             std::size_t sync_interval_;

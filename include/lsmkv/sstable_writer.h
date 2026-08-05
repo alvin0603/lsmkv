@@ -21,7 +21,6 @@ namespace lsmkv
             bool add(std::string_view internal_key, std::string_view value);
             bool finish();
         private:
-            bool writeAll(std::string_view data);
             bool flushBlock();
             int fd_ = -1;
             std::size_t target_block_size_;

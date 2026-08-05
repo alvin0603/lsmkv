@@ -1,5 +1,6 @@
 #include <lsmkv/wal_reader.h>
 #include <lsmkv/coding.h>
+#include "internal/file_io.h"
 
 #include <cerrno>
 #include <fcntl.h>
@@ -25,28 +26,6 @@ namespace lsmkv
     {
         return fd_ != -1;
     }
-    WalReader::ReadResult WalReader::readExact(char* output, std::size_t size)
-    {
-        std::size_t bytes_read = 0;
-        while(bytes_read < size)
-        {
-            ssize_t result = ::read(fd_, output + bytes_read, size - bytes_read);
-            if (result == -1)
-            {
-                if (errno == EINTR)
-                    continue;
-                return ReadResult::kError;
-            }
-            else if (result == 0)
-            {
-                if(bytes_read == 0)
-                    return ReadResult::kEnd;
-                return ReadResult::kPartial;
-            }
-            bytes_read += static_cast<std::size_t>(result);
-        }
-        return ReadResult::kComplete;
-    }
     bool WalReader::truncate(std::uint64_t size)
     {
         while(::ftruncate(fd_, static_cast<off_t>(size)) == -1)
@@ -67,12 +46,12 @@ namespace lsmkv
         while(true)
         {
             std::string header(kWalHeaderSize, '\0');
-            const ReadResult header_result = readExact(header.data(), header.size());
-            if(header_result == ReadResult::kEnd)
+            const FileReadResult header_result = readExact(fd_, header.data(), header.size());
+            if(header_result == FileReadResult::kEnd)
                 return true;
-            if(header_result == ReadResult::kError)
+            if(header_result == FileReadResult::kError)
                 return false;
-            if(header_result == ReadResult::kPartial)
+            if(header_result == FileReadResult::kPartial)
                 return truncate(last_valid_offset);
             
             // parse CRC and length
@@ -88,10 +67,10 @@ namespace lsmkv
             
             // read payload
             std::string payload(payload_length, '\0');
-            const ReadResult payload_result = readExact(payload.data(), payload.size());
-            if(payload_result == ReadResult::kError)
+            const FileReadResult payload_result = readExact(fd_, payload.data(), payload.size());
+            if(payload_result == FileReadResult::kError)
                 return false;
-            if(payload_result != ReadResult::kComplete)
+            if(payload_result != FileReadResult::kComplete)
                 return truncate(last_valid_offset);
             if(calculateCrc32(payload) != stored_crc)
                 return truncate(last_valid_offset);

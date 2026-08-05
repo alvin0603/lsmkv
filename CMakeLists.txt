@@ -15,6 +15,8 @@ target_include_directories(catch2 PUBLIC
 )
 add_library(lsmkv STATIC
     src/coding.cpp
+    src/file_io.cpp
+    src/file_names.cpp
     src/internal_key.cpp
     src/memtable.cpp
     src/wal_writer.cpp

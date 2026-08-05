@@ -1,6 +1,8 @@
 #include <lsmkv/manifest.h>
 #include <lsmkv/coding.h>
 #include <lsmkv/internal_key.h>
+#include "internal/file_io.h"
+#include "internal/file_names.h"
 
 #include <limits>
 #include <string>
@@ -98,56 +100,9 @@ namespace lsmkv
         state = std::move(decode);
         return true;
     }
-    bool writeAll(int fd, std::string_view data)
-    {
-        std::size_t total_written = 0;
-        while(total_written < data.size())
-        {
-            ssize_t written = ::write(fd, data.data() + total_written, data.size() - total_written);
-            if(written == -1)
-            {
-                if(errno == EINTR)
-                    continue;
-                return false;
-            }
-            if(written == 0)
-                return false;
-            total_written += static_cast<std::size_t>(written);
-        }
-        return true;
-    }
-    bool readAll(int fd, std::size_t file_size, std::string& output)
-    {
-        output.resize(file_size);
-        std::size_t total_read = 0;
-        while(total_read < file_size)
-        {
-            ssize_t bytes_read = ::read(fd, output.data() + total_read, file_size - total_read);
-            if(bytes_read == -1)
-            {
-                if(errno == EINTR)
-                    continue;
-                return false;
-            }
-            if(bytes_read == 0)
-                return false;
-            total_read += static_cast<std::size_t>(bytes_read);
-        }
-        return true;
-    }
-    bool syncFile(int fd)
-    {
-        while(::fsync(fd) == -1)
-        {
-            if(errno == EINTR)
-                continue;
-            return false;
-        }
-        return true;
-    }
     bool loadManifest(std::string_view directory, ManifestState& state)
     {
-        std::filesystem::path manifest_path = std::filesystem::path(directory) / "MANIFEST";
+        const std::filesystem::path manifest_path = manifestFilePath(std::filesystem::path(directory));
         int fd = ::open(manifest_path.c_str(), O_RDONLY);
         if(fd == -1)
         {
@@ -170,7 +125,8 @@ namespace lsmkv
             return false;
         }
         std::string encoded_manifest;
-        bool success = readAll(fd, static_cast<std::size_t>(file_stat.st_size), encoded_manifest);
+        encoded_manifest.resize(static_cast<std::size_t>(file_stat.st_size));
+        bool success = readExact(fd, encoded_manifest.data(), encoded_manifest.size()) == FileReadResult::kComplete;
         if(::close(fd) == -1)
             success = false;
         if(!success)
@@ -182,9 +138,9 @@ namespace lsmkv
         std::string encoded_manifest;
         if(!encodeManifest(state, encoded_manifest))
             return false;
-        std::filesystem::path directory_path(directory);
-        std::filesystem::path tmp_path = directory_path / "MANIFEST.tmp";
-        std::filesystem::path manifest_path = directory_path / "MANIFEST";
+        const std::filesystem::path directory_path(directory);
+        const std::filesystem::path tmp_path = temporaryManifestFilePath(directory_path);
+        const std::filesystem::path manifest_path = manifestFilePath(directory_path);
         int fd = ::open(tmp_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if(fd == -1)
             return false;

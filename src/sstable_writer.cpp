@@ -1,7 +1,7 @@
 #include <lsmkv/sstable_writer.h>
 #include <lsmkv/coding.h>
+#include "internal/file_io.h"
 
-#include <cerrno>
 #include <fcntl.h>
 #include <string>
 #include <unistd.h>
@@ -24,26 +24,6 @@ namespace lsmkv
     bool SSTableWriter::isOpen() const
     {
         return fd_ != -1;
-    }
-    bool SSTableWriter::writeAll(std::string_view data)
-    {
-        if(fd_ == -1)
-            return false;
-        std::size_t written = 0;
-        while(written < data.size())
-        {
-            const ssize_t result = ::write(fd_, data.data() + written, data.size() - written);
-            if(result == -1)
-            {
-                if(errno == EINTR)
-                    continue;
-                return false;
-            }
-            if(result == 0)
-                return false;
-            written += static_cast<std::size_t>(result);
-        }
-        return true;
     }
     bool SSTableWriter::add(std::string_view internal_key, std::string_view value)
     {
@@ -77,7 +57,7 @@ namespace lsmkv
             return true;
         const std::uint64_t block_offset = file_offset_;
         const std::uint64_t block_size = current_block_.size();
-        if(!writeAll(current_block_))
+        if(!writeAll(fd_, current_block_))
             return false;
         if(!appendLengthPrefixedSlice(index_block_, current_block_last_key_))
             return false;
@@ -96,7 +76,7 @@ namespace lsmkv
             return false;
         const std::uint64_t index_offset = file_offset_;
         const std::uint64_t index_size = index_block_.size();
-        if(!writeAll(index_block_))
+        if(!writeAll(fd_, index_block_))
             return false;
         file_offset_ += index_size;
         std::string footer;
@@ -105,14 +85,10 @@ namespace lsmkv
         appendFixed64(footer, 0);
         appendFixed64(footer, 0);
         appendFixed64(footer, kSSTableMagic);
-        if(!writeAll(footer))
+        if(!writeAll(fd_, footer))
             return false;
-        while(::fsync(fd_) == -1)
-        {
-            if(errno == EINTR)
-                continue;
+        if(!syncFile(fd_))
             return false;
-        }
         finished_ = true;
         return true;
     }
