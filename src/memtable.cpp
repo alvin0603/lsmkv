@@ -38,4 +38,16 @@ namespace lsmkv
     {
         return approximate_memory_usage_;
     }
+    MemTable::const_iterator MemTable::begin() const
+    {
+        return table_.begin();
+    }
+    MemTable::const_iterator MemTable::end() const
+    {
+        return table_.end();
+    }
+    bool MemTable::empty() const
+    {
+        return table_.empty();
+    }
 }

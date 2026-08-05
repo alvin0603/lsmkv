@@ -22,6 +22,7 @@ add_library(lsmkv STATIC
     src/db.cpp
     src/sstable_writer.cpp
     src/sstable_reader.cpp
+    src/manifest.cpp
 )
 target_include_directories(lsmkv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -39,6 +40,7 @@ add_executable(lsmkv_tests
     tests/db_test.cpp
     tests/sstable_writer_test.cpp
     tests/sstable_reader_test.cpp
+    tests/manifest_test.cpp
 )
 add_executable(sstable_dump
     tools/sstable_dump.cpp
