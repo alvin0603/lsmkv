@@ -157,6 +157,13 @@ namespace lsmkv
         const std::uint64_t last_sequence = std::max(db->manifest_state_.last_sequence,max_replayed_sequence);
         db->next_sequence_ = last_sequence + 1;
         db->open_ = true;
+
+        // In case the DB is opened with excessive RAM
+        if(db->memtable_.approximateMemoryUsage() >= db->memtable_flush_size_)
+        {
+            if(!db->flushMemTable())
+                return nullptr;
+        }
         return db;
     }
     bool DB::put(std::string_view user_key, std::string_view value)
@@ -205,14 +212,14 @@ namespace lsmkv
     {
         if(!open_ || !wal_writer_)
             return false;
+        if(immutable_memtable_)
+            return handleFlushFailure();
         if(memtable_.empty())
             return true;
-        if(immutable_memtable_)
-            return false;
         if(active_wal_epoch_ == std::numeric_limits<std::uint64_t>::max())
-            return false;
+            return handleFlushFailure();
         if(manifest_state_.next_file_id == std::numeric_limits<std::uint64_t>::max())
-            return false;
+            return handleFlushFailure();
 
         // create a new WAL file
         const std::uint64_t immutable_wal_epoch = active_wal_epoch_;
@@ -220,7 +227,7 @@ namespace lsmkv
         const std::filesystem::path new_wal_path = walFilePath(std::filesystem::path(directory_), new_wal_epoch);
         auto new_wal_writer = std::make_unique<WalWriter>(new_wal_path.string(), sync_mode_, sync_interval_);
         if(!new_wal_writer->isOpen())
-            return false;
+            return handleFlushFailure();
 
         // freeze the current MemTable and switch to the new WAL writer
         immutable_memtable_ = std::make_unique<MemTable>(std::move(memtable_));
@@ -254,14 +261,14 @@ namespace lsmkv
             /* Manifest has not been updated*/
             std::error_code remove_error;
             std::filesystem::remove(table_path, remove_error);
-            return false;
+            return handleFlushFailure();
         }
 
         // Create the new Table Metadata for a new Manifest
         std::error_code file_size_error;
         const std::uintmax_t table_file_size = std::filesystem::file_size(table_path, file_size_error);
         if(file_size_error || table_file_size > std::numeric_limits<std::uint64_t>::max())
-            return false;
+            return handleFlushFailure();
         TableMetaData table_metadata;
         table_metadata.file_id = table_id;
         table_metadata.level = 0;
@@ -276,12 +283,17 @@ namespace lsmkv
 
         // atomic commit of the new Manifest and clean up the old WAL and MeMTable
         if(!saveManifest(directory_, tmp_manifest_state))
-            return false;
+            return handleFlushFailure();
         manifest_state_ = std::move(tmp_manifest_state);
         const std::filesystem::path immutable_wal_path = walFilePath(std::filesystem::path(directory_), immutable_wal_epoch);
         std::error_code remove_error;
         std::filesystem::remove(immutable_wal_path, remove_error);
         immutable_memtable_.reset();
         return true;
+    }
+    bool DB::handleFlushFailure()
+    {
+        close();
+        return false;
     }
 }

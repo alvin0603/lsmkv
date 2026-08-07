@@ -204,3 +204,78 @@ TEST_CASE("DB flushes automatically at the MemTable size limit", "[db]")
     db->close();
     std::filesystem::remove_all(path);
 }
+
+TEST_CASE("DB flushes a large recovered MemTable during open", "[db]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_recovery_flush_test";
+    std::filesystem::remove_all(path);
+    {
+        auto db = lsmkv::DB::open(
+            path.string(),
+            lsmkv::SyncMode::kSyncEveryWrite,
+            1,
+            1024
+        );
+        REQUIRE(db != nullptr);
+        REQUIRE(db->put("apple", "red"));
+        REQUIRE_FALSE(std::filesystem::exists(path / "1.sst"));
+    }
+    auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncEveryWrite, 1, 1);
+    REQUIRE(db != nullptr);
+    REQUIRE(std::filesystem::exists(path / "1.sst"));
+    REQUIRE(std::filesystem::exists(path / "MANIFEST"));
+    REQUIRE_FALSE(std::filesystem::exists(path / "1.wal"));
+    REQUIRE(std::filesystem::exists(path / "2.wal"));
+    lsmkv::ManifestState state;
+    REQUIRE(lsmkv::loadManifest(path.string(), state));
+    REQUIRE(state.next_file_id == 2);
+    REQUIRE(state.last_sequence == 1);
+    REQUIRE(state.durable_wal_epoch == 1);
+    REQUIRE(state.tables.size() == 1);
+    lsmkv::SSTableReader reader((path / "1.sst").string());
+    REQUIRE(reader.isOpen());
+    std::string value;
+    REQUIRE(reader.get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    db->close();
+    std::filesystem::remove_all(path);
+}
+
+TEST_CASE("DB closes after a flush failure and recovers from WAL", "[db]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_flush_failure_test";
+    std::filesystem::remove_all(path);
+    auto db = lsmkv::DB::open(path.string());
+    REQUIRE(db != nullptr);
+    REQUIRE(db->put("apple", "red"));
+    {
+        std::ofstream conflicting_table(path / "1.sst", std::ios::binary);
+        conflicting_table << "conflict";
+        REQUIRE(conflicting_table.good());
+    }
+    REQUIRE_FALSE(db->flush());
+    REQUIRE_FALSE(db->isOpen());
+    REQUIRE_FALSE(db->flush());
+    db.reset();
+    db = lsmkv::DB::open(path.string());
+    REQUIRE(db != nullptr);
+    std::string value;
+    REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(db->put("banana", "yellow"));
+    REQUIRE(db->flush());
+    lsmkv::ManifestState state;
+    REQUIRE(lsmkv::loadManifest(path.string(), state));
+    REQUIRE(state.next_file_id == 2);
+    REQUIRE(state.last_sequence == 2);
+    REQUIRE(state.durable_wal_epoch == 2);
+    REQUIRE(state.tables.size() == 1);
+    lsmkv::SSTableReader reader((path / "1.sst").string());
+    REQUIRE(reader.isOpen());
+    REQUIRE(reader.get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(reader.get("banana", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "yellow");
+    db->close();
+    std::filesystem::remove_all(path);
+}

@@ -42,5 +42,6 @@ namespace lsmkv
             int lock_fd_ = -1;
             bool open_ = false;
             bool flushMemTable();
+            bool handleFlushFailure();
     };
 }
