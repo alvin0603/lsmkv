@@ -279,3 +279,43 @@ TEST_CASE("DB closes after a flush failure and recovers from WAL", "[db]")
     db->close();
     std::filesystem::remove_all(path);
 }
+
+TEST_CASE("DB reads the newest result across MemTables and L0 SSTables", "[db]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_multiple_sources_test";
+    std::filesystem::remove_all(path);
+    {
+        auto db = lsmkv::DB::open(path.string());
+        REQUIRE(db != nullptr);
+        REQUIRE(db->put("apple", "old"));
+        REQUIRE(db->put("banana", "yellow"));
+        REQUIRE(db->put("cat", "black"));
+        REQUIRE(db->flush());
+        REQUIRE(db->put("apple", "new"));
+        REQUIRE(db->deleteKey("banana"));
+        std::string value;
+        REQUIRE(db->get("banana", value) == lsmkv::LookupResult::kDeleted);
+        REQUIRE(db->flush());
+        REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "new");
+        REQUIRE(db->get("banana", value) == lsmkv::LookupResult::kDeleted);
+        REQUIRE(db->get("cat", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "black");
+        REQUIRE(db->put("apple", "newest"));
+        REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "newest");
+        REQUIRE(db->get("dog", value) == lsmkv::LookupResult::kNotFound);
+        REQUIRE(db->flush());
+    }
+    auto db = lsmkv::DB::open(path.string());
+    REQUIRE(db != nullptr);
+    std::string value;
+    REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "newest");
+    REQUIRE(db->get("banana", value) == lsmkv::LookupResult::kDeleted);
+    REQUIRE(db->get("cat", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "black");
+    REQUIRE(db->get("dog", value) == lsmkv::LookupResult::kNotFound);
+    db->close();
+    std::filesystem::remove_all(path);
+}

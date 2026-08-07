@@ -34,6 +34,7 @@ namespace lsmkv
     void DB::close()
     {
         wal_writer_.reset();
+        opened_tables_.clear();
         if(lock_fd_ != -1)
         {
             ::close(lock_fd_);
@@ -83,7 +84,12 @@ namespace lsmkv
             const std::uintmax_t actual_file_size = std::filesystem::file_size(table_path, table_error);
             if(table_error || actual_file_size != table.file_size)
                 return nullptr;
+            auto reader = std::make_unique<SSTableReader>(table_path.string());
+            if(!reader->isOpen())
+                return nullptr;
+            db->opened_tables_.push_back({table, std::move(reader)});
         }
+        db->sortOpenedTables();
         std::vector<WalFile> wal_files;
         std::filesystem::directory_iterator it(directory, error);
         std::filesystem::directory_iterator end;
@@ -186,7 +192,22 @@ namespace lsmkv
     {
         if(!open_)
             return LookupResult::kNotFound;
-        return memtable_.get(user_key, value);
+        LookupResult result = memtable_.get(user_key, value);
+        if(result != LookupResult::kNotFound)
+            return result;
+        if(immutable_memtable_)
+        {
+            result = immutable_memtable_->get(user_key, value);
+            if(result != LookupResult::kNotFound)
+                return result;
+        }
+        for(const OpenedTable& table: opened_tables_)
+        {
+            result = table.reader->get(user_key, value);
+            if(result != LookupResult::kNotFound)
+                return result;
+        }
+        return LookupResult::kNotFound;
     }
     bool DB::deleteKey(std::string_view user_key)
     {
@@ -264,7 +285,7 @@ namespace lsmkv
             return handleFlushFailure();
         }
 
-        // Create the new Table Metadata for a new Manifest
+        // Create the new Table Metadata for a new Manifest and validate the SSTable
         std::error_code file_size_error;
         const std::uintmax_t table_file_size = std::filesystem::file_size(table_path, file_size_error);
         if(file_size_error || table_file_size > std::numeric_limits<std::uint64_t>::max())
@@ -275,6 +296,9 @@ namespace lsmkv
         table_metadata.file_size = static_cast<std::uint64_t>(table_file_size);
         table_metadata.smallest_key = immutable_memtable_->begin()->first;
         table_metadata.largest_key = std::prev(immutable_memtable_->end())->first;
+        auto table_reader = std::make_unique<SSTableReader>(table_path.string());
+        if(!table_reader->isOpen())
+            return handleFlushFailure(); // double check the SSTable
         ManifestState tmp_manifest_state = manifest_state_;
         tmp_manifest_state.next_file_id = table_id + 1;
         tmp_manifest_state.last_sequence = next_sequence_ - 1;
@@ -285,6 +309,8 @@ namespace lsmkv
         if(!saveManifest(directory_, tmp_manifest_state))
             return handleFlushFailure();
         manifest_state_ = std::move(tmp_manifest_state);
+        opened_tables_.push_back({manifest_state_.tables.back(), std::move(table_reader)});
+        sortOpenedTables();
         const std::filesystem::path immutable_wal_path = walFilePath(std::filesystem::path(directory_), immutable_wal_epoch);
         std::error_code remove_error;
         std::filesystem::remove(immutable_wal_path, remove_error);
@@ -295,5 +321,14 @@ namespace lsmkv
     {
         close();
         return false;
+    }
+    void DB::sortOpenedTables()
+    {
+        std::sort(opened_tables_.begin(), opened_tables_.end(), [](const OpenedTable& left, const OpenedTable& right)
+        {
+            if(left.metadata.level != right.metadata.level)
+                return left.metadata.level < right.metadata.level;
+            return left.metadata.file_id > right.metadata.file_id;
+        });
     }
 }

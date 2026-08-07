@@ -3,12 +3,14 @@
 #include <lsmkv/memtable.h>
 #include <lsmkv/wal_writer.h>
 #include <lsmkv/manifest.h>
+#include <lsmkv/sstable_reader.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string_view>
 #include <string>
+#include <vector>
 
 namespace lsmkv
 {
@@ -28,10 +30,16 @@ namespace lsmkv
             void close();
             bool flush();
         private:
+            struct OpenedTable
+            {
+                TableMetaData metadata;
+                std::unique_ptr<SSTableReader> reader;
+            };
             DB() = default; // ensure that DB can only be created through the open() 
             MemTable memtable_;
             std::unique_ptr<MemTable> immutable_memtable_;
             std::unique_ptr<WalWriter> wal_writer_; // destroyed when DB is closed
+            std::vector<OpenedTable> opened_tables_;
             ManifestState manifest_state_;
             std::string directory_;
             std::uint64_t next_sequence_ = 1;
@@ -41,7 +49,9 @@ namespace lsmkv
             std::size_t memtable_flush_size_ = kDefaultMemTableSize;
             int lock_fd_ = -1;
             bool open_ = false;
+
             bool flushMemTable();
             bool handleFlushFailure();
+            void sortOpenedTables();
     };
 }
