@@ -22,6 +22,7 @@ add_library(lsmkv STATIC
     src/wal_writer.cpp
     src/wal_reader.cpp
     src/db.cpp
+    src/db_iterator.cpp
     src/sstable_writer.cpp
     src/sstable_reader.cpp
     src/manifest.cpp

@@ -319,3 +319,100 @@ TEST_CASE("DB reads the newest result across MemTables and L0 SSTables", "[db]")
     db->close();
     std::filesystem::remove_all(path);
 }
+
+TEST_CASE("DBIterator supports an empty and closed DB", "[db-iterator]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_empty_db_iterator_test";
+    std::filesystem::remove_all(path);
+    auto db = lsmkv::DB::open(path.string());
+    REQUIRE(db != nullptr);
+    auto iterator = db->newIterator();
+    REQUIRE(iterator != nullptr);
+    REQUIRE(iterator->ok());
+    REQUIRE_FALSE(iterator->valid());
+    REQUIRE(iterator->key().empty());
+    REQUIRE(iterator->value().empty());
+    iterator.reset();
+    db->close();
+    REQUIRE(db->newIterator() == nullptr);
+    std::filesystem::remove_all(path);
+}
+
+TEST_CASE("DBIterator merges MemTables and L0 SSTables", "[db-iterator]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_iterator_test";
+    std::filesystem::remove_all(path);
+    {
+        auto db = lsmkv::DB::open(path.string());
+        REQUIRE(db != nullptr);
+        REQUIRE(db->put("apple", "old"));
+        REQUIRE(db->put("banana", "yellow"));
+        REQUIRE(db->put("dog", "brown"));
+        REQUIRE(db->put("fig", "old"));
+        REQUIRE(db->put("fig", "new"));
+        REQUIRE(db->flush());
+        REQUIRE(db->put("apple", "new"));
+        REQUIRE(db->deleteKey("banana"));
+        REQUIRE(db->put("cat", "black"));
+        REQUIRE(db->put("grape", "green"));
+        REQUIRE(db->flush());
+        REQUIRE(db->put("apple", "newest"));
+        REQUIRE(db->deleteKey("dog"));
+        REQUIRE(db->put("eel", "white"));
+        auto iterator = db->newIterator();
+        REQUIRE(iterator != nullptr);
+        REQUIRE(iterator->ok());
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "apple");
+        REQUIRE(iterator->value() == "newest");
+        iterator->next();
+        REQUIRE(iterator->ok());
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "cat");
+        REQUIRE(iterator->value() == "black");
+        iterator->next();
+        REQUIRE(iterator->ok());
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "eel");
+        REQUIRE(iterator->value() == "white");
+        iterator->next();
+        REQUIRE(iterator->ok());
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "fig");
+        REQUIRE(iterator->value() == "new");
+        iterator->next();
+        REQUIRE(iterator->ok());
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "grape");
+        REQUIRE(iterator->value() == "green");
+        iterator->next();
+        REQUIRE(iterator->ok());
+        REQUIRE_FALSE(iterator->valid());
+    }
+    {
+        auto db = lsmkv::DB::open(path.string());
+        REQUIRE(db != nullptr);
+        auto iterator = db->newIterator();
+        REQUIRE(iterator != nullptr);
+        REQUIRE(iterator->ok());
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "apple");
+        REQUIRE(iterator->value() == "newest");
+        iterator->next();
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "cat");
+        iterator->next();
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "eel");
+        iterator->next();
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "fig");
+        iterator->next();
+        REQUIRE(iterator->valid());
+        REQUIRE(iterator->key() == "grape");
+        iterator->next();
+        REQUIRE(iterator->ok());
+        REQUIRE_FALSE(iterator->valid());
+    }
+    std::filesystem::remove_all(path);
+}

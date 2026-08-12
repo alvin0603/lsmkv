@@ -135,3 +135,75 @@ TEST_CASE("SSTableReader supports an empty SSTable", "[sstable-reader]")
     REQUIRE(value == "unchanged");
     std::filesystem::remove(path);
 }
+
+TEST_CASE("SSTableIterator reads entries across data blocks", "[sstable-reader]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_sstable_iterator_test.sst";
+    std::filesystem::remove(path);
+    std::string apple_new;
+    std::string apple_old;
+    std::string banana_delete;
+    std::string cat;
+    REQUIRE(lsmkv::appendInternalKey(apple_new, "apple", 40, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(apple_old, "apple", 30, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(banana_delete, "banana", 20, lsmkv::ValueType::kDelete));
+    REQUIRE(lsmkv::appendInternalKey(cat, "cat", 10, lsmkv::ValueType::kPut));
+    {
+        lsmkv::SSTableWriter writer(path.string(), 20);
+        REQUIRE(writer.isOpen());
+        REQUIRE(writer.add(apple_new, "new"));
+        REQUIRE(writer.add(apple_old, "old"));
+        REQUIRE(writer.add(banana_delete, ""));
+        REQUIRE(writer.add(cat, "black"));
+        REQUIRE(writer.finish());
+    }
+
+    lsmkv::SSTableReader reader(path.string());
+    REQUIRE(reader.isOpen());
+    lsmkv::SSTableIterator iterator = reader.newIterator();
+    REQUIRE(iterator.ok());
+    REQUIRE(iterator.valid());
+    REQUIRE(iterator.internalKey() == apple_new);
+    REQUIRE(iterator.value() == "new");
+    iterator.next();
+    REQUIRE(iterator.ok());
+    REQUIRE(iterator.valid());
+    REQUIRE(iterator.internalKey() == apple_old);
+    REQUIRE(iterator.value() == "old");
+    iterator.next();
+    REQUIRE(iterator.ok());
+    REQUIRE(iterator.valid());
+    REQUIRE(iterator.internalKey() == banana_delete);
+    REQUIRE(iterator.value().empty());
+    iterator.next();
+    REQUIRE(iterator.ok());
+    REQUIRE(iterator.valid());
+    REQUIRE(iterator.internalKey() == cat);
+    REQUIRE(iterator.value() == "black");
+    iterator.next();
+    REQUIRE(iterator.ok());
+    REQUIRE_FALSE(iterator.valid());
+    REQUIRE(iterator.internalKey().empty());
+    REQUIRE(iterator.value().empty());
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("SSTableIterator supports an empty SSTable", "[sstable-reader]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_empty_sstable_iterator_test.sst";
+    std::filesystem::remove(path);
+    {
+        lsmkv::SSTableWriter writer(path.string());
+        REQUIRE(writer.isOpen());
+        REQUIRE(writer.finish());
+    }
+    lsmkv::SSTableReader reader(path.string());
+    REQUIRE(reader.isOpen());
+    lsmkv::SSTableIterator iterator = reader.newIterator();
+    REQUIRE(iterator.ok());
+    REQUIRE_FALSE(iterator.valid());
+    iterator.next();
+    REQUIRE(iterator.ok());
+    REQUIRE_FALSE(iterator.valid());
+    std::filesystem::remove(path);
+}

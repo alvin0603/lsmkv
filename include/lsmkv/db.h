@@ -4,6 +4,7 @@
 #include <lsmkv/wal_writer.h>
 #include <lsmkv/manifest.h>
 #include <lsmkv/sstable_reader.h>
+#include <lsmkv/db_iterator.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -29,6 +30,7 @@ namespace lsmkv
             bool deleteKey(std::string_view user_key);
             void close();
             bool flush();
+            std::unique_ptr<DBIterator> newIterator() const;
         private:
             struct OpenedTable
             {
@@ -49,6 +51,7 @@ namespace lsmkv
             std::size_t memtable_flush_size_ = kDefaultMemTableSize;
             int lock_fd_ = -1;
             bool open_ = false;
+            friend class DBIterator;
 
             bool flushMemTable();
             bool handleFlushFailure();

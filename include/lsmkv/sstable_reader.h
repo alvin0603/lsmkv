@@ -6,9 +6,11 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstddef>
 
 namespace lsmkv
 {
+    class SSTableIterator;
     class SSTableReader
     {
         public:
@@ -18,6 +20,7 @@ namespace lsmkv
             SSTableReader& operator=(const SSTableReader&) = delete;
             bool isOpen() const;
             LookupResult get(std::string_view user_key, std::string& value) const;
+            SSTableIterator newIterator() const;
         private:
             struct IndexEntry
             {
@@ -30,5 +33,28 @@ namespace lsmkv
             int fd_ = -1;
             std::uint64_t file_size_ = 0;
             std::vector<IndexEntry> index_;
+            friend class SSTableIterator;
+    };
+
+    class SSTableIterator
+    {
+        public:
+            bool valid() const;
+            bool ok() const;
+            std::string_view internalKey() const;
+            std::string_view value() const;
+            void next();
+        private:
+            explicit SSTableIterator(const SSTableReader* reader);
+            bool loadNextEntry();
+            const SSTableReader* reader_ = nullptr;
+            std::size_t block_index_ = 0;
+            std::size_t block_position_ = 0;
+            std::string block_; // data block in RAM
+            std::string current_internal_key_;
+            std::string current_value_;
+            bool valid_ = false;
+            bool ok_ = true;
+            friend class SSTableReader;
     };
 }

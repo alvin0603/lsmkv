@@ -46,6 +46,12 @@ namespace lsmkv
     {
         return open_;
     }
+    std::unique_ptr<DBIterator> DB::newIterator() const
+    {
+        if(!open_)
+            return nullptr;
+        return std::unique_ptr<DBIterator>(new DBIterator(this));
+    }
     std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size)
     {
         auto db = std::unique_ptr<DB>(new DB());

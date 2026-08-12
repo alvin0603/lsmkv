@@ -43,6 +43,89 @@ namespace lsmkv
     {
         return fd_ != -1;
     }
+    SSTableIterator SSTableReader::newIterator() const
+    {
+        return SSTableIterator(this);
+    }
+    SSTableIterator::SSTableIterator(const SSTableReader* reader)
+    {
+        reader_ = reader;
+        if(reader_ == nullptr || !reader_->isOpen())
+        {
+            ok_ = false;
+            return;
+        }
+        loadNextEntry();
+    }
+    bool SSTableIterator::loadNextEntry()
+    {
+        valid_ = false;
+        current_internal_key_.clear();
+        current_value_.clear();
+        while(true)
+        {
+            if(block_position_ < block_.size())
+            {
+                std::string_view block_input = block_;
+                block_input.remove_prefix(block_position_);
+                const std::size_t input_size = block_input.size();
+                std::string_view internal_key;
+                std::string_view value;
+                if(!consumeLengthPrefixedSlice(block_input, internal_key) || !consumeLengthPrefixedSlice(block_input, value))
+                {
+                    ok_ = false;
+                    return false;
+                }
+                ParsedInternalKey parsed_key;
+                if(!parseInternalKey(internal_key, parsed_key))
+                {
+                    ok_ = false;
+                    return false;
+                }
+                block_position_ += input_size - block_input.size();
+                current_internal_key_.assign(internal_key);
+                current_value_.assign(value);
+                valid_ = true;
+                return true;
+            }
+            if(block_index_ >= reader_->index_.size())
+                return true;
+            const SSTableReader::IndexEntry& index_entry = reader_->index_[block_index_];
+            block_index_++;
+            if(!reader_->readAt(index_entry.block_offset, index_entry.block_size, block_))
+            {
+                ok_ = false;
+                return false;
+            }
+            block_position_ = 0;
+        }
+    }
+    void SSTableIterator::next()
+    {
+        if(!valid_)
+            return;
+        loadNextEntry();
+    }
+    bool SSTableIterator::valid() const
+    {
+        return valid_;
+    }
+    bool SSTableIterator::ok() const
+    {
+        return ok_;
+    }
+    std::string_view SSTableIterator::internalKey() const
+    {
+        if(!valid_)
+            return {};
+        return current_internal_key_;
+    }
+    std::string_view SSTableIterator::value() const
+    {
+        if(!valid_)
+            return {};
+        return current_value_;
+    }
     bool SSTableReader::readAt(std::uint64_t offset, std::uint64_t size, std::string& output) const
     {
         if(fd_ == -1)
