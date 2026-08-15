@@ -16,11 +16,12 @@
 namespace lsmkv
 {
     inline constexpr std::size_t kDefaultMemTableSize = 4 * 1024 * 1024;
+    inline constexpr std::size_t kDefaultL0CompactionTrigger = 4;
 
     class DB
     {
         public:
-            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize);
+            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize, std::size_t l0_compaction_trigger = kDefaultL0CompactionTrigger);
             ~DB();
             DB(const DB&) = delete;
             DB& operator=(const DB&) = delete;
@@ -49,6 +50,7 @@ namespace lsmkv
             SyncMode sync_mode_ = SyncMode::kSyncEveryWrite;
             std::size_t sync_interval_ = 1;
             std::size_t memtable_flush_size_ = kDefaultMemTableSize;
+            std::size_t l0_compaction_trigger_ = kDefaultL0CompactionTrigger;
             int lock_fd_ = -1;
             bool open_ = false;
             friend class DBIterator;
@@ -56,5 +58,6 @@ namespace lsmkv
             bool flushMemTable();
             bool handleFlushFailure();
             void sortOpenedTables();
+            bool compactL0();
     };
 }

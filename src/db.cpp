@@ -2,6 +2,7 @@
 #include <lsmkv/wal_reader.h>
 #include <lsmkv/sstable_writer.h>
 #include "internal/file_names.h"
+#include "internal/compaction.h"
 
 #include <fcntl.h>
 #include <filesystem>
@@ -52,15 +53,16 @@ namespace lsmkv
             return nullptr;
         return std::unique_ptr<DBIterator>(new DBIterator(this));
     }
-    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size)
+    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size, std::size_t l0_compaction_trigger)
     {
         auto db = std::unique_ptr<DB>(new DB());
-        if(memtable_flush_size == 0)
+        if(memtable_flush_size == 0 || l0_compaction_trigger == 0)
             return nullptr;
         db->directory_ = std::string(path);
         db->sync_mode_ = sync_mode;
         db->sync_interval_ = sync_interval;
         db->memtable_flush_size_ = memtable_flush_size;
+        db->l0_compaction_trigger_ = l0_compaction_trigger;
         const std::filesystem::path directory{std::string(path)};
         std::error_code error;
         std::filesystem::create_directories(directory, error);
@@ -176,6 +178,10 @@ namespace lsmkv
             if(!db->flushMemTable())
                 return nullptr;
         }
+
+        // In case the SSTable have been up to limit
+        if(!db->compactL0())
+            return nullptr;
         return db;
     }
     bool DB::put(std::string_view user_key, std::string_view value)
@@ -207,7 +213,7 @@ namespace lsmkv
             if(result != LookupResult::kNotFound)
                 return result;
         }
-        for(const OpenedTable& table: opened_tables_)
+        for(const OpenedTable& table : opened_tables_)
         {
             result = table.reader->get(user_key, value);
             if(result != LookupResult::kNotFound)
@@ -321,6 +327,98 @@ namespace lsmkv
         std::error_code remove_error;
         std::filesystem::remove(immutable_wal_path, remove_error);
         immutable_memtable_.reset();
+        if(!compactL0())
+            return handleFlushFailure();
+        return true;
+    }
+    bool DB::compactL0()
+    {
+        // find the L0
+        std::vector<const SSTableReader*> readers;
+        std::unordered_set<std::uint64_t> compacted_ids;
+        for(const OpenedTable& table : opened_tables_)
+        {
+            if(table.metadata.level != 0)
+                continue;
+            readers.push_back(table.reader.get());
+            compacted_ids.insert(table.metadata.file_id);
+        }
+        if(readers.size() < l0_compaction_trigger_)
+            return true;
+
+        // determine the new SSTable ID
+        if(manifest_state_.next_file_id == std::numeric_limits<std::uint64_t>::max())
+            return false;
+        const std::uint64_t output_id = manifest_state_.next_file_id;
+        const std::filesystem::path output_path = sstableFilePath(std::filesystem::path(directory_), output_id);
+
+        // merge
+        CompactionOutput output;
+        if(!writeCompactedTable(output_path.string(), readers, output))
+        {
+            std::error_code remove_error;
+            std::filesystem::remove(output_path, remove_error);
+            return false;
+        }
+        std::error_code file_size_error;
+        const std::uintmax_t file_size = std::filesystem::file_size(output_path, file_size_error); // TableMetadata require
+        if(file_size_error || file_size > std::numeric_limits<std::uint64_t>::max())
+        {
+            std::error_code remove_error;
+            std::filesystem::remove(output_path, remove_error);
+            return false;
+        }
+
+        // create L1 metadata
+        TableMetaData output_metadata;
+        output_metadata.file_id = output_id;
+        output_metadata.level = 1;
+        output_metadata.file_size = static_cast<std::uint64_t>(file_size);
+        output_metadata.smallest_key = std::move(output.smallest_key);
+        output_metadata.largest_key = std::move(output.largest_key);
+
+        // create reader for new SSTable
+        auto output_reader = std::make_unique<SSTableReader>(output_path.string());
+        if(!output_reader->isOpen())
+        {
+            std::error_code remove_error;
+            std::filesystem::remove(output_path, remove_error);
+            return false;
+        }
+
+        // update new manifest
+        ManifestState tmp_manifest_state = manifest_state_;
+        tmp_manifest_state.next_file_id = output_id + 1;
+        tmp_manifest_state.tables.erase
+        (
+            std::remove_if(tmp_manifest_state.tables.begin(), tmp_manifest_state.tables.end(), [&compacted_ids](const TableMetaData& table)
+            {
+                return compacted_ids.contains(table.file_id);
+            }),
+            tmp_manifest_state.tables.end()
+        );
+        tmp_manifest_state.tables.push_back(output_metadata);
+        if(!saveManifest(directory_, tmp_manifest_state))
+            return false;
+        manifest_state_ = std::move(tmp_manifest_state);
+
+        // update opened tables
+        opened_tables_.erase
+        (
+            std::remove_if(opened_tables_.begin(), opened_tables_.end(), [&compacted_ids](const OpenedTable& table)
+            {
+                return compacted_ids.contains(table.metadata.file_id);
+            }),
+            opened_tables_.end()
+        );
+        opened_tables_.push_back({output_metadata, std::move(output_reader)});
+        sortOpenedTables();
+        for(const std::uint64_t file_id : compacted_ids)
+        {
+            const std::filesystem::path input_path = sstableFilePath(std::filesystem::path(directory_), file_id);
+            std::error_code remove_error;
+            std::filesystem::remove(input_path, remove_error);
+        }
         return true;
     }
     bool DB::handleFlushFailure()

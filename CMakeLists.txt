@@ -23,9 +23,11 @@ add_library(lsmkv STATIC
     src/wal_reader.cpp
     src/db.cpp
     src/db_iterator.cpp
+    src/merging_iterator.cpp
     src/sstable_writer.cpp
     src/sstable_reader.cpp
     src/manifest.cpp
+    src/compaction.cpp
 )
 target_include_directories(lsmkv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -36,11 +38,13 @@ enable_testing()
 add_executable(lsmkv_tests
     tests/dummy_test.cpp
     tests/coding_test.cpp
+    tests/compaction_test.cpp
     tests/internal_key_test.cpp
     tests/memtable_test.cpp
     tests/wal_writer_test.cpp
     tests/wal_reader_test.cpp
     tests/db_test.cpp
+    tests/merging_iterator_test.cpp
     tests/sstable_writer_test.cpp
     tests/sstable_reader_test.cpp
     tests/manifest_test.cpp
@@ -50,5 +54,8 @@ add_executable(sstable_dump
 )
 target_link_libraries(sstable_dump PRIVATE lsmkv)
 target_link_libraries(lsmkv_tests PRIVATE catch2 lsmkv)
+target_include_directories(lsmkv_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 add_test(NAME lsmkv_tests COMMAND lsmkv_tests)
