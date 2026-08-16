@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lsmkv/memtable.h>
+#include <lsmkv/bloom_filter.h>
 
 #include <cstdint>
 #include <string>
@@ -21,6 +22,7 @@ namespace lsmkv
             bool isOpen() const;
             LookupResult get(std::string_view user_key, std::string& value) const;
             SSTableIterator newIterator() const;
+            std::uint64_t dataBlockReadCount() const;
         private:
             struct IndexEntry
             {
@@ -33,6 +35,9 @@ namespace lsmkv
             int fd_ = -1;
             std::uint64_t file_size_ = 0;
             std::vector<IndexEntry> index_;
+            BloomFilter bloom_filter_;
+            bool has_bloom_filter_ = false;
+            mutable std::uint64_t data_block_read_count_ = 0;
             friend class SSTableIterator;
     };
 

@@ -43,6 +43,10 @@ namespace lsmkv
     {
         return fd_ != -1;
     }
+    std::uint64_t SSTableReader::dataBlockReadCount() const
+    {
+        return data_block_read_count_;
+    }
     SSTableIterator SSTableReader::newIterator() const
     {
         return SSTableIterator(this);
@@ -175,11 +179,28 @@ namespace lsmkv
             return false;
         if(magic != kSSTableMagic)
             return false;
-        if(bloom_offset != 0 || bloom_size != 0)
-            return false;
         if(index_offset > footer_offset || index_size > footer_offset - index_offset)
             return false;
-        
+        const std::uint64_t index_end = index_offset + index_size;
+        if(bloom_size == 0)
+        {
+            if(bloom_offset != 0 || index_end != footer_offset)
+                return false;
+        }
+        else
+        {
+            if(bloom_offset > footer_offset || bloom_size > footer_offset - bloom_offset)
+                return false;
+            if(bloom_offset != index_end || bloom_size != footer_offset - bloom_offset)
+                return false;
+            std::string bloom_block;
+            if(!readAt(bloom_offset, bloom_size, bloom_block))
+                return false;
+            if(!bloom_filter_.decode(bloom_block))
+                return false;
+            has_bloom_filter_ = true;
+        }
+
         // read index block and parse entries
         std::string index_block;
         if(!readAt(index_offset, index_size, index_block))
@@ -212,6 +233,8 @@ namespace lsmkv
     {
         if(fd_ == -1 || index_.empty())
             return LookupResult::kNotFound;
+        if(has_bloom_filter_ && !bloom_filter_.mayContain(user_key))
+            return LookupResult::kNotFound;
         std::string target;
         if(!appendInternalKey(target, user_key, kMaxSequenceNumber, ValueType::kPut))
             return LookupResult::kNotFound;
@@ -228,6 +251,7 @@ namespace lsmkv
 
         // read the data block
         std::string block;
+        data_block_read_count_++;
         if(!readAt(index_entry->block_offset, index_entry->block_size, block))
             return LookupResult::kNotFound;
         std::string_view block_input = block;

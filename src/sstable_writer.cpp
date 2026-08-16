@@ -8,10 +8,10 @@
 
 namespace lsmkv
 {
-    SSTableWriter::SSTableWriter(std::string_view path, std::size_t target_block_size)
+    SSTableWriter::SSTableWriter(std::string_view path, std::size_t target_block_size, std::size_t bloom_bits_per_key, std::uint32_t bloom_num_hashes): bloom_filter_(bloom_bits_per_key, bloom_num_hashes)
     {
         target_block_size_ = target_block_size;
-        if(target_block_size_ == 0)
+        if(target_block_size_ == 0 || bloom_bits_per_key == 0 || bloom_num_hashes == 0 || bloom_num_hashes > kMaxBloomHashCount)
             return;
         const std::string path_string(path);
         fd_ = ::open(path_string.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
@@ -44,6 +44,13 @@ namespace lsmkv
         {
             if(!flushBlock())
                 return false;
+        }
+        if(!has_last_bloom_user_key_ || last_bloom_user_key_ != parsed_key.user_key)
+        {
+            if(!bloom_filter_.add(parsed_key.user_key))
+                return false;
+            last_bloom_user_key_.assign(parsed_key.user_key);
+            has_last_bloom_user_key_ = true;
         }
         current_block_.append(entry);
         current_block_last_key_.assign(internal_key);
@@ -79,11 +86,21 @@ namespace lsmkv
         if(!writeAll(fd_, index_block_))
             return false;
         file_offset_ += index_size;
+        if(!bloom_filter_.finish())
+            return false;
+        std::string bloom_block;
+        if(!bloom_filter_.encode(bloom_block))
+            return false;
+        const std::uint64_t bloom_offset = file_offset_;
+        const std::uint64_t bloom_size = bloom_block.size();
+        if(!writeAll(fd_, bloom_block))
+            return false;
+        file_offset_ += bloom_size;
         std::string footer;
         appendFixed64(footer, index_offset);
         appendFixed64(footer, index_size);
-        appendFixed64(footer, 0);
-        appendFixed64(footer, 0);
+        appendFixed64(footer, bloom_offset);
+        appendFixed64(footer, bloom_size);
         appendFixed64(footer, kSSTableMagic);
         if(!writeAll(fd_, footer))
             return false;

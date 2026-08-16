@@ -1,4 +1,5 @@
 #include <catch_amalgamated.hpp>
+#include <lsmkv/bloom_filter.h>
 #include <lsmkv/coding.h>
 #include <lsmkv/internal_key.h>
 #include <lsmkv/sstable_format.h>
@@ -61,8 +62,8 @@ TEST_CASE("SSTableWriter writes data blocks index and footer", "[sstable-writer]
     REQUIRE(footer_input.empty());
     REQUIRE(index_offset == 53);
     REQUIRE(index_size == 59);
-    REQUIRE(bloom_offset == 0);
-    REQUIRE(bloom_size == 0);
+    REQUIRE(bloom_offset == index_offset + index_size);
+    REQUIRE(bloom_size == 20);
     REQUIRE(magic == lsmkv::kSSTableMagic);
     std::string expected_data;
     expected_data.append(apple_entry);
@@ -86,7 +87,13 @@ TEST_CASE("SSTableWriter writes data blocks index and footer", "[sstable-writer]
     REQUIRE(block_offset == 40);
     REQUIRE(block_size == 13);
     REQUIRE(index_input.empty());
-    REQUIRE(file_data.size() == index_offset + index_size + lsmkv::kSSTableFooterSize);
+    std::string_view bloom_block(file_data.data() + bloom_offset, static_cast<std::size_t>(bloom_size));
+    lsmkv::BloomFilter bloom_filter;
+    REQUIRE(bloom_filter.decode(bloom_block));
+    REQUIRE(bloom_filter.mayContain("apple"));
+    REQUIRE(bloom_filter.mayContain("banana"));
+    REQUIRE(bloom_filter.mayContain("cat"));
+    REQUIRE(file_data.size() == bloom_offset + bloom_size + lsmkv::kSSTableFooterSize);
     std::filesystem::remove(path);
 }
 
@@ -130,4 +137,23 @@ TEST_CASE("SSTableWriter rejects zero block size", "[sstable-writer]")
     lsmkv::SSTableWriter writer(path.string(), 0);
     REQUIRE_FALSE(writer.isOpen());
     REQUIRE_FALSE(std::filesystem::exists(path));
+}
+
+TEST_CASE("SSTableWriter rejects invalid Bloom filter settings", "[sstable-writer]")
+{
+    const std::filesystem::path zero_bits_path = std::filesystem::temp_directory_path() / "lsmkv_sstable_writer_zero_bloom_bits_test.sst";
+    const std::filesystem::path zero_hashes_path = std::filesystem::temp_directory_path() / "lsmkv_sstable_writer_zero_bloom_hashes_test.sst";
+    const std::filesystem::path excessive_hashes_path = std::filesystem::temp_directory_path() / "lsmkv_sstable_writer_excessive_bloom_hashes_test.sst";
+    std::filesystem::remove(zero_bits_path);
+    std::filesystem::remove(zero_hashes_path);
+    std::filesystem::remove(excessive_hashes_path);
+    lsmkv::SSTableWriter zero_bits_writer(zero_bits_path.string(), lsmkv::kDefaultDataBlockSize, 0, lsmkv::kDefaultBloomHashCount);
+    REQUIRE_FALSE(zero_bits_writer.isOpen());
+    lsmkv::SSTableWriter zero_hashes_writer(zero_hashes_path.string(), lsmkv::kDefaultDataBlockSize, lsmkv::kDefaultBloomBitsPerKey, 0);
+    REQUIRE_FALSE(zero_hashes_writer.isOpen());
+    lsmkv::SSTableWriter excessive_hashes_writer(excessive_hashes_path.string(), lsmkv::kDefaultDataBlockSize, lsmkv::kDefaultBloomBitsPerKey, lsmkv::kMaxBloomHashCount + 1);
+    REQUIRE_FALSE(excessive_hashes_writer.isOpen());
+    REQUIRE_FALSE(std::filesystem::exists(zero_bits_path));
+    REQUIRE_FALSE(std::filesystem::exists(zero_hashes_path));
+    REQUIRE_FALSE(std::filesystem::exists(excessive_hashes_path));
 }

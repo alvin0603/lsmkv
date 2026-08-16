@@ -2,6 +2,7 @@
 
 #include <lsmkv/internal_key.h>
 #include <lsmkv/sstable_format.h>
+#include <lsmkv/bloom_filter.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -13,7 +14,7 @@ namespace lsmkv
     class SSTableWriter
     {
         public:
-            explicit SSTableWriter(std::string_view path, std::size_t target_block_size = kDefaultDataBlockSize);
+            explicit SSTableWriter(std::string_view path, std::size_t target_block_size = kDefaultDataBlockSize, std::size_t bloom_bits_per_key = kDefaultBloomBitsPerKey, std::uint32_t bloom_num_hashes = kDefaultBloomHashCount);
             ~SSTableWriter();
             SSTableWriter(const SSTableWriter&) = delete;
             SSTableWriter& operator=(const SSTableWriter&) = delete;
@@ -29,7 +30,10 @@ namespace lsmkv
             std::string current_block_last_key_;
             std::string index_block_;
             std::string last_added_key_;
+            std::string last_bloom_user_key_;
+            BloomFilter bloom_filter_;
             bool has_last_key_ = false;
+            bool has_last_bloom_user_key_ = false;
             bool finished_ = false;
     };
 }

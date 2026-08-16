@@ -1,6 +1,8 @@
 #include <catch_amalgamated.hpp>
+#include <lsmkv/coding.h>
 #include <lsmkv/internal_key.h>
 #include <lsmkv/memtable.h>
+#include <lsmkv/sstable_format.h>
 #include <lsmkv/sstable_reader.h>
 #include <lsmkv/sstable_writer.h>
 
@@ -38,6 +40,7 @@ TEST_CASE("SSTableReader returns values and tombstones", "[sstable-reader]")
 
     lsmkv::SSTableReader reader(path.string());
     REQUIRE(reader.isOpen());
+    REQUIRE(reader.dataBlockReadCount() == 0);
     std::string value = "unchanged";
     REQUIRE(reader.get("apple", value) == lsmkv::LookupResult::kFound);
     REQUIRE(value == "new");
@@ -48,6 +51,7 @@ TEST_CASE("SSTableReader returns values and tombstones", "[sstable-reader]")
     REQUIRE(value == "black");
     REQUIRE(reader.get("dog", value) == lsmkv::LookupResult::kFound);
     REQUIRE(value == "brown");
+    REQUIRE(reader.dataBlockReadCount() == 4);
     std::filesystem::remove(path);
 }
 
@@ -71,6 +75,7 @@ TEST_CASE("SSTableReader reports missing keys at every boundary", "[sstable-read
     }
     lsmkv::SSTableReader reader(path.string());
     REQUIRE(reader.isOpen());
+    REQUIRE(reader.dataBlockReadCount() == 0);
     std::string value = "unchanged";
     REQUIRE(reader.get("aardvark", value) == lsmkv::LookupResult::kNotFound);
     REQUIRE(value == "unchanged");
@@ -78,6 +83,7 @@ TEST_CASE("SSTableReader reports missing keys at every boundary", "[sstable-read
     REQUIRE(value == "unchanged");
     REQUIRE(reader.get("zebra", value) == lsmkv::LookupResult::kNotFound);
     REQUIRE(value == "unchanged");
+    REQUIRE(reader.dataBlockReadCount() == 0);
     std::filesystem::remove(path);
 }
 
@@ -133,6 +139,42 @@ TEST_CASE("SSTableReader supports an empty SSTable", "[sstable-reader]")
     std::string value = "unchanged";
     REQUIRE(reader.get("apple", value) == lsmkv::LookupResult::kNotFound);
     REQUIRE(value == "unchanged");
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("SSTableReader supports SSTables without a Bloom filter", "[sstable-reader]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_sstable_reader_old_format_test.sst";
+    std::filesystem::remove(path);
+    std::string internal_key;
+    REQUIRE(lsmkv::appendInternalKey(internal_key, "apple", 10, lsmkv::ValueType::kPut));
+    std::string data_block;
+    REQUIRE(lsmkv::appendLengthPrefixedSlice(data_block, internal_key));
+    REQUIRE(lsmkv::appendLengthPrefixedSlice(data_block, "red"));
+    std::string index_block;
+    REQUIRE(lsmkv::appendLengthPrefixedSlice(index_block, internal_key));
+    lsmkv::appendFixed64(index_block, 0);
+    lsmkv::appendFixed64(index_block, data_block.size());
+    std::string footer;
+    lsmkv::appendFixed64(footer, data_block.size());
+    lsmkv::appendFixed64(footer, index_block.size());
+    lsmkv::appendFixed64(footer, 0);
+    lsmkv::appendFixed64(footer, 0);
+    lsmkv::appendFixed64(footer, lsmkv::kSSTableMagic);
+    {
+        std::ofstream file(path, std::ios::binary);
+        REQUIRE(file.is_open());
+        file.write(data_block.data(), static_cast<std::streamsize>(data_block.size()));
+        file.write(index_block.data(), static_cast<std::streamsize>(index_block.size()));
+        file.write(footer.data(), static_cast<std::streamsize>(footer.size()));
+        REQUIRE(file.good());
+    }
+    lsmkv::SSTableReader reader(path.string());
+    REQUIRE(reader.isOpen());
+    std::string value;
+    REQUIRE(reader.get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(reader.dataBlockReadCount() == 1);
     std::filesystem::remove(path);
 }
 

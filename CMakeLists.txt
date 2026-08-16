@@ -28,6 +28,7 @@ add_library(lsmkv STATIC
     src/sstable_reader.cpp
     src/manifest.cpp
     src/compaction.cpp
+    src/bloom_filter.cpp
 )
 target_include_directories(lsmkv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -37,6 +38,7 @@ enable_testing()
 
 add_executable(lsmkv_tests
     tests/dummy_test.cpp
+    tests/bloom_filter_test.cpp
     tests/coding_test.cpp
     tests/compaction_test.cpp
     tests/internal_key_test.cpp
