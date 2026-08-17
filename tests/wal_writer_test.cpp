@@ -12,11 +12,13 @@ TEST_CASE("WalWriter appends records in WAL format", "[wal-writer]")
 {
     const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_wal_writer_test.wal";
     std::filesystem::remove(path);
+    std::uint64_t bytes_written = 0;
     {
         lsmkv::WalWriter writer(path.string(), lsmkv::SyncMode::kSyncEveryWrite);
         REQUIRE(writer.isOpen());
         REQUIRE(writer.append(7, lsmkv::ValueType::kPut, "cat", "red"));
         REQUIRE(writer.append(8, lsmkv::ValueType::kDelete, "cat", ""));
+        bytes_written = writer.bytesWritten();
     }
     std::ifstream file(path, std::ios::binary);
     REQUIRE(file.is_open());
@@ -39,6 +41,7 @@ TEST_CASE("WalWriter appends records in WAL format", "[wal-writer]")
     lsmkv::appendFixed32(expected, static_cast<std::uint32_t>(second_payload.size()));
     expected.append(second_payload);
     REQUIRE(file_data == expected);
+    REQUIRE(bytes_written == expected.size());
     file.close();
     std::filesystem::remove(path);
 }

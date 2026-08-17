@@ -37,6 +37,7 @@ target_include_directories(lsmkv PUBLIC
 
 add_library(lsmkv_bench_support STATIC
     bench/workload.cpp
+    bench/metrics.cpp
 )
 target_include_directories(lsmkv_bench_support PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/bench
@@ -60,6 +61,7 @@ add_executable(lsmkv_tests
     tests/sstable_reader_test.cpp
     tests/manifest_test.cpp
     tests/workload_test.cpp
+    tests/metrics_test.cpp
 )
 add_executable(sstable_dump
     tools/sstable_dump.cpp

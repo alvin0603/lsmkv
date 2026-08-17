@@ -49,6 +49,7 @@ namespace lsmkv
         record.append(payload);
         if(!writeAll(fd_, record))
             return false;
+        bytes_written_ += record.size();
         writes_since_last_sync_++;
         if(sync_mode_ == SyncMode::kSyncEveryWrite)
             return sync();
@@ -64,6 +65,10 @@ namespace lsmkv
             return false;
         writes_since_last_sync_ = 0;
         return true;
+    }
+    std::uint64_t WalWriter::bytesWritten() const
+    {
+        return bytes_written_;
     }
 }
 

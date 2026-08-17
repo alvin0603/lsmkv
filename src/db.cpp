@@ -34,6 +34,8 @@ namespace lsmkv
     }
     void DB::close()
     {
+        if(wal_writer_)
+            stats_.wal_bytes_written += wal_writer_->bytesWritten();
         wal_writer_.reset();
         opened_tables_.clear();
         if(lock_fd_ != -1)
@@ -64,6 +66,13 @@ namespace lsmkv
         if(!block_cache_)
             return 0.0;
         return block_cache_->hitRate();
+    }
+    DBStats DB::stats() const
+    {
+        DBStats result = stats_;
+        if(wal_writer_)
+            result.wal_bytes_written += wal_writer_->bytesWritten();
+        return result;
     }
     std::unique_ptr<DBIterator> DB::newIterator() const
     {
@@ -214,6 +223,7 @@ namespace lsmkv
             return false;
         if(!memtable_.add(sequence, ValueType::kPut, user_key, value))
             return false;
+        stats_.user_bytes_written += user_key.size() + value.size();
         next_sequence_++;
         if(memtable_.approximateMemoryUsage() >= memtable_flush_size_)
             return flushMemTable();
@@ -251,6 +261,7 @@ namespace lsmkv
             return false;
         if(!memtable_.add(sequence, ValueType::kDelete, user_key, ""))
             return false;
+        stats_.user_bytes_written += user_key.size();
         next_sequence_++;
         if(memtable_.approximateMemoryUsage() >= memtable_flush_size_)
             return flushMemTable();
@@ -284,6 +295,7 @@ namespace lsmkv
         // freeze the current MemTable and switch to the new WAL writer
         immutable_memtable_ = std::make_unique<MemTable>(std::move(memtable_));
         memtable_ = MemTable{};
+        stats_.wal_bytes_written += wal_writer_->bytesWritten();
         wal_writer_ = std::move(new_wal_writer);
         active_wal_epoch_ = new_wal_epoch;
 
@@ -340,6 +352,7 @@ namespace lsmkv
         if(!saveManifest(directory_, tmp_manifest_state))
             return handleFlushFailure();
         manifest_state_ = std::move(tmp_manifest_state);
+        stats_.sstable_bytes_written += static_cast<std::uint64_t>(table_file_size);
         opened_tables_.push_back({manifest_state_.tables.back(), std::move(table_reader)});
         sortOpenedTables();
         const std::filesystem::path immutable_wal_path = walFilePath(std::filesystem::path(directory_), immutable_wal_epoch);
@@ -355,12 +368,14 @@ namespace lsmkv
         // find the L0
         std::vector<const SSTableReader*> readers;
         std::unordered_set<std::uint64_t> compacted_ids;
+        std::uint64_t input_bytes = 0;
         for(const OpenedTable& table : opened_tables_)
         {
             if(table.metadata.level != 0)
                 continue;
             readers.push_back(table.reader.get());
             compacted_ids.insert(table.metadata.file_id);
+            input_bytes += table.metadata.file_size;
         }
         if(readers.size() < l0_compaction_trigger_)
             return true;
@@ -420,6 +435,10 @@ namespace lsmkv
         if(!saveManifest(directory_, tmp_manifest_state))
             return false;
         manifest_state_ = std::move(tmp_manifest_state);
+        stats_.sstable_bytes_written += static_cast<std::uint64_t>(file_size);
+        stats_.compaction_count++;
+        stats_.compaction_bytes_read += input_bytes;
+        stats_.compaction_bytes_written += static_cast<std::uint64_t>(file_size);
 
         // update opened tables
         opened_tables_.erase

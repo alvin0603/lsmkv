@@ -19,6 +19,15 @@ namespace lsmkv
     inline constexpr std::size_t kDefaultMemTableSize = 4 * 1024 * 1024;
     inline constexpr std::size_t kDefaultL0CompactionTrigger = 4;
 
+    struct DBStats
+    {
+        std::uint64_t wal_bytes_written = 0;
+        std::uint64_t sstable_bytes_written = 0;
+        std::uint64_t user_bytes_written = 0;
+        std::uint64_t compaction_count = 0;
+        std::uint64_t compaction_bytes_read = 0;
+        std::uint64_t compaction_bytes_written = 0;
+    };
     class DB
     {
         public:
@@ -36,6 +45,7 @@ namespace lsmkv
             std::uint64_t blockCacheHitCount() const;
             std::uint64_t blockCacheMissCount() const;
             double blockCacheHitRate() const;
+            DBStats stats() const;
         private:
             struct OpenedTable
             {
@@ -56,6 +66,7 @@ namespace lsmkv
             std::size_t memtable_flush_size_ = kDefaultMemTableSize;
             std::size_t l0_compaction_trigger_ = kDefaultL0CompactionTrigger;
             std::shared_ptr<BlockCache> block_cache_;
+            DBStats stats_;
             int lock_fd_ = -1;
             bool open_ = false;
             friend class DBIterator;

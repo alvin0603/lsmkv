@@ -25,10 +25,12 @@ namespace lsmkv
             bool isOpen() const;
             bool append(std::uint64_t sequence, ValueType type, std::string_view user_key, std::string_view value);
             bool sync();
+            std::uint64_t bytesWritten() const;
         private:
             int fd_ = -1;
             SyncMode sync_mode_;
             std::size_t sync_interval_;
             std::size_t writes_since_last_sync_ = 0;
+            std::uint64_t bytes_written_ = 0;
     };
 }

@@ -32,6 +32,44 @@ TEST_CASE("DB stores and deletes values", "[db]")
     std::filesystem::remove_all(path);
 }
 
+TEST_CASE("DB reports bytes written by successful operations", "[db][metrics]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_metrics_test";
+    std::filesystem::remove_all(path);
+    auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncOff);
+    REQUIRE(db != nullptr);
+    REQUIRE(db->put("apple", "red"));
+    REQUIRE(db->deleteKey("banana"));
+    lsmkv::DBStats stats = db->stats();
+    REQUIRE(stats.user_bytes_written == 14);
+    REQUIRE(stats.wal_bytes_written > stats.user_bytes_written);
+    REQUIRE(stats.sstable_bytes_written == 0);
+    REQUIRE(db->flush());
+    stats = db->stats();
+    REQUIRE(stats.sstable_bytes_written == std::filesystem::file_size(path / "1.sst"));
+    REQUIRE(stats.compaction_count == 0);
+    db->close();
+    REQUIRE(db->stats().wal_bytes_written == stats.wal_bytes_written);
+    std::filesystem::remove_all(path);
+}
+
+TEST_CASE("DB reports compaction bytes", "[db][metrics]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_compaction_metrics_test";
+    std::filesystem::remove_all(path);
+    auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncOff, 1, 1, 2);
+    REQUIRE(db != nullptr);
+    REQUIRE(db->put("apple", "red"));
+    REQUIRE(db->put("banana", "yellow"));
+    const lsmkv::DBStats stats = db->stats();
+    REQUIRE(stats.compaction_count == 1);
+    REQUIRE(stats.compaction_bytes_read > 0);
+    REQUIRE(stats.compaction_bytes_written > 0);
+    REQUIRE(stats.sstable_bytes_written == stats.compaction_bytes_read + stats.compaction_bytes_written);
+    db->close();
+    std::filesystem::remove_all(path);
+}
+
 TEST_CASE("DB recovers values and sequence numbers from WAL", "[db]")
 {
     const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_recovery_test";
