@@ -35,6 +35,13 @@ target_include_directories(lsmkv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+add_library(lsmkv_bench_support STATIC
+    bench/workload.cpp
+)
+target_include_directories(lsmkv_bench_support PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/bench
+)
+
 enable_testing()
 
 add_executable(lsmkv_tests
@@ -52,12 +59,17 @@ add_executable(lsmkv_tests
     tests/sstable_writer_test.cpp
     tests/sstable_reader_test.cpp
     tests/manifest_test.cpp
+    tests/workload_test.cpp
 )
 add_executable(sstable_dump
     tools/sstable_dump.cpp
 )
+add_executable(lsmkv_bench
+    bench/bench_main.cpp
+)
 target_link_libraries(sstable_dump PRIVATE lsmkv)
-target_link_libraries(lsmkv_tests PRIVATE catch2 lsmkv)
+target_link_libraries(lsmkv_bench PRIVATE lsmkv lsmkv_bench_support)
+target_link_libraries(lsmkv_tests PRIVATE catch2 lsmkv lsmkv_bench_support)
 target_include_directories(lsmkv_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
