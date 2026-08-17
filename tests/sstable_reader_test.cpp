@@ -6,8 +6,10 @@
 #include <lsmkv/sstable_reader.h>
 #include <lsmkv/sstable_writer.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 
 TEST_CASE("SSTableReader returns values and tombstones", "[sstable-reader]")
@@ -85,6 +87,101 @@ TEST_CASE("SSTableReader reports missing keys at every boundary", "[sstable-read
     REQUIRE(value == "unchanged");
     REQUIRE(reader.dataBlockReadCount() == 0);
     std::filesystem::remove(path);
+}
+
+TEST_CASE("SSTableReader reuses cached data blocks", "[sstable-reader][block-cache]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_sstable_reader_block_cache_test.sst";
+    std::filesystem::remove(path);
+    std::string apple;
+    std::string banana;
+    REQUIRE(lsmkv::appendInternalKey(apple, "apple", 20, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(banana, "banana", 10, lsmkv::ValueType::kPut));
+    {
+        lsmkv::SSTableWriter writer(path.string(), 100);
+        REQUIRE(writer.isOpen());
+        REQUIRE(writer.add(apple, "red"));
+        REQUIRE(writer.add(banana, "yellow"));
+        REQUIRE(writer.finish());
+    }
+    auto cache = std::make_shared<lsmkv::BlockCache>(1024);
+    lsmkv::SSTableReader reader(path.string(), 1, cache);
+    REQUIRE(reader.isOpen());
+    REQUIRE(reader.dataBlockReadCount() == 0);
+    std::string value;
+    REQUIRE(reader.get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(reader.dataBlockReadCount() == 1);
+    REQUIRE(cache->missCount() == 1);
+    REQUIRE(cache->hitCount() == 0);
+    REQUIRE(reader.get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(reader.dataBlockReadCount() == 1);
+    REQUIRE(cache->missCount() == 1);
+    REQUIRE(cache->hitCount() == 1);
+    REQUIRE(reader.get("banana", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "yellow");
+    REQUIRE(reader.dataBlockReadCount() == 1);
+    REQUIRE(cache->missCount() == 1);
+    REQUIRE(cache->hitCount() == 2);
+    lsmkv::SSTableIterator iterator = reader.newIterator();
+    REQUIRE(iterator.ok());
+    REQUIRE(iterator.valid());
+    REQUIRE(iterator.internalKey() == apple);
+    REQUIRE(reader.dataBlockReadCount() == 1);
+    REQUIRE(cache->hitCount() == 3);
+    const std::uint64_t hit_count = cache->hitCount();
+    const std::uint64_t miss_count = cache->missCount();
+    REQUIRE(reader.get("missing", value) == lsmkv::LookupResult::kNotFound);
+    REQUIRE(cache->hitCount() == hit_count);
+    REQUIRE(cache->missCount() == miss_count);
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("SSTableReader cache separates different file ids", "[sstable-reader][block-cache]")
+{
+    const std::filesystem::path first_path = std::filesystem::temp_directory_path() / "lsmkv_sstable_reader_first_cache_file_test.sst";
+    const std::filesystem::path second_path = std::filesystem::temp_directory_path() / "lsmkv_sstable_reader_second_cache_file_test.sst";
+    std::filesystem::remove(first_path);
+    std::filesystem::remove(second_path);
+    std::string first_key;
+    std::string second_key;
+    REQUIRE(lsmkv::appendInternalKey(first_key, "apple", 20, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(second_key, "banana", 10, lsmkv::ValueType::kPut));
+    {
+        lsmkv::SSTableWriter writer(first_path.string());
+        REQUIRE(writer.isOpen());
+        REQUIRE(writer.add(first_key, "red"));
+        REQUIRE(writer.finish());
+    }
+    {
+        lsmkv::SSTableWriter writer(second_path.string());
+        REQUIRE(writer.isOpen());
+        REQUIRE(writer.add(second_key, "yellow"));
+        REQUIRE(writer.finish());
+    }
+    auto cache = std::make_shared<lsmkv::BlockCache>(1024);
+    lsmkv::SSTableReader first_reader(first_path.string(), 1, cache);
+    lsmkv::SSTableReader second_reader(second_path.string(), 2, cache);
+    REQUIRE(first_reader.isOpen());
+    REQUIRE(second_reader.isOpen());
+    std::string value;
+    REQUIRE(first_reader.get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(second_reader.get("banana", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "yellow");
+    REQUIRE(cache->missCount() == 2);
+    REQUIRE(cache->hitCount() == 0);
+    REQUIRE(first_reader.get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(second_reader.get("banana", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "yellow");
+    REQUIRE(cache->missCount() == 2);
+    REQUIRE(cache->hitCount() == 2);
+    REQUIRE(first_reader.dataBlockReadCount() == 1);
+    REQUIRE(second_reader.dataBlockReadCount() == 1);
+    std::filesystem::remove(first_path);
+    std::filesystem::remove(second_path);
 }
 
 TEST_CASE("SSTableReader rejects an invalid magic number", "[sstable-reader]")

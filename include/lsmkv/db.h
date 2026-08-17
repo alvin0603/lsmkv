@@ -5,6 +5,7 @@
 #include <lsmkv/manifest.h>
 #include <lsmkv/sstable_reader.h>
 #include <lsmkv/db_iterator.h>
+#include <lsmkv/block_cache.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -21,7 +22,7 @@ namespace lsmkv
     class DB
     {
         public:
-            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize, std::size_t l0_compaction_trigger = kDefaultL0CompactionTrigger);
+            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize, std::size_t l0_compaction_trigger = kDefaultL0CompactionTrigger, std::size_t block_cache_capacity = kDefaultBlockCacheCapacity);
             ~DB();
             DB(const DB&) = delete;
             DB& operator=(const DB&) = delete;
@@ -32,6 +33,9 @@ namespace lsmkv
             void close();
             bool flush();
             std::unique_ptr<DBIterator> newIterator() const;
+            std::uint64_t blockCacheHitCount() const;
+            std::uint64_t blockCacheMissCount() const;
+            double blockCacheHitRate() const;
         private:
             struct OpenedTable
             {
@@ -51,6 +55,7 @@ namespace lsmkv
             std::size_t sync_interval_ = 1;
             std::size_t memtable_flush_size_ = kDefaultMemTableSize;
             std::size_t l0_compaction_trigger_ = kDefaultL0CompactionTrigger;
+            std::shared_ptr<BlockCache> block_cache_;
             int lock_fd_ = -1;
             bool open_ = false;
             friend class DBIterator;

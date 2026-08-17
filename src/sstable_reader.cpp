@@ -11,10 +11,62 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <algorithm>
+#include <memory>
+#include <utility>
+
+namespace
+{
+    bool readFileRange(int fd, std::uint64_t file_size, std::uint64_t offset, std::uint64_t size, std::string& output)
+    {
+        if(fd == -1)
+            return false;
+        if(offset > file_size || size > file_size - offset)
+            return false;
+        if(size > std::numeric_limits<std::size_t>::max())
+            return false;
+        output.assign(static_cast<std::size_t>(size), '\0');
+        std::size_t read = 0;
+        while(read < output.size())
+        {
+            const ssize_t result = ::pread(fd, output.data() + read, output.size() - read, static_cast<off_t>(offset + read));
+            if(result == -1)
+            {
+                if(errno == EINTR)
+                    continue;
+                return false;
+            }
+            if(result == 0)
+                return false;
+            read += static_cast<std::size_t>(result);
+        }
+        return true;
+    }
+
+    class FileBlockSource : public lsmkv::BlockSource
+    {
+        public:
+            FileBlockSource(int fd, std::uint64_t file_size, std::uint64_t* read_count)
+            {
+                fd_ = fd;
+                file_size_ = file_size;
+                read_count_ = read_count;
+            }
+            bool read(std::uint64_t offset, std::uint64_t size, std::string& output) override
+            {
+                if(read_count_ != nullptr)
+                    (*read_count_)++;
+                return readFileRange(fd_, file_size_, offset, size, output);
+            }
+        private:
+            int fd_;
+            std::uint64_t file_size_;
+            std::uint64_t* read_count_;
+    };
+}
 
 namespace lsmkv
 {
-    SSTableReader::SSTableReader(std::string_view path)
+    SSTableReader::SSTableReader(std::string_view path, std::uint64_t file_id, std::shared_ptr<BlockCache> block_cache)
     {
         const std::string path_string(path);
         fd_ = ::open(path_string.c_str(), O_RDONLY);
@@ -28,6 +80,11 @@ namespace lsmkv
             return;
         }
         file_size_ = static_cast<std::uint64_t>(file_stat.st_size);
+        auto file_source = std::make_unique<FileBlockSource>(fd_, file_size_, &data_block_read_count_);
+        if(block_cache)
+            data_block_source_ = std::make_unique<CachedBlockSource>(file_id, std::move(file_source), std::move(block_cache));
+        else
+            data_block_source_ = std::move(file_source);
         if(!loadIndex())
         {
             ::close(fd_);
@@ -96,7 +153,7 @@ namespace lsmkv
                 return true;
             const SSTableReader::IndexEntry& index_entry = reader_->index_[block_index_];
             block_index_++;
-            if(!reader_->readAt(index_entry.block_offset, index_entry.block_size, block_))
+            if(!reader_->readDataBlock(index_entry.block_offset, index_entry.block_size, block_))
             {
                 ok_ = false;
                 return false;
@@ -132,28 +189,13 @@ namespace lsmkv
     }
     bool SSTableReader::readAt(std::uint64_t offset, std::uint64_t size, std::string& output) const
     {
-        if(fd_ == -1)
+        return readFileRange(fd_, file_size_, offset, size, output);
+    }
+    bool SSTableReader::readDataBlock(std::uint64_t offset, std::uint64_t size, std::string& output) const
+    {
+        if(!data_block_source_)
             return false;
-        if(offset > file_size_ || size > file_size_ - offset)
-            return false;
-        if(size > std::numeric_limits<std::size_t>::max())
-            return false;
-        output.assign(static_cast<std::size_t>(size), '\0');
-        std::size_t read = 0;
-        while(read < output.size())
-        {
-            const ssize_t result = ::pread(fd_, output.data() + read, output.size() - read, static_cast<off_t>(offset + read));
-            if(result == -1)
-            {
-                if(errno == EINTR)
-                    continue;
-                return false;
-            }
-            if(result == 0)
-                return false;
-            read += static_cast<std::size_t>(result);
-        }
-        return true;
+        return data_block_source_->read(offset, size, output);
     }
     bool SSTableReader::loadIndex()
     {
@@ -251,8 +293,7 @@ namespace lsmkv
 
         // read the data block
         std::string block;
-        data_block_read_count_++;
-        if(!readAt(index_entry->block_offset, index_entry->block_size, block))
+        if(!readDataBlock(index_entry->block_offset, index_entry->block_size, block))
             return LookupResult::kNotFound;
         std::string_view block_input = block;
 

@@ -2,7 +2,9 @@
 
 #include <lsmkv/memtable.h>
 #include <lsmkv/bloom_filter.h>
+#include <lsmkv/block_cache.h>
 
+#include <memory>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -15,7 +17,7 @@ namespace lsmkv
     class SSTableReader
     {
         public:
-            explicit SSTableReader(std::string_view path);
+            explicit SSTableReader(std::string_view path, std::uint64_t file_id = 0, std::shared_ptr<BlockCache> block_cache = nullptr);
             ~SSTableReader();
             SSTableReader(const SSTableReader&) = delete;
             SSTableReader& operator=(const SSTableReader&) = delete;
@@ -32,12 +34,14 @@ namespace lsmkv
             };
             bool readAt(std::uint64_t offset, std::uint64_t size, std::string& output) const;
             bool loadIndex();
+            bool readDataBlock(std::uint64_t offset, std::uint64_t size, std::string& output) const;
             int fd_ = -1;
             std::uint64_t file_size_ = 0;
             std::vector<IndexEntry> index_;
+            mutable std::uint64_t data_block_read_count_ = 0;
+            std::unique_ptr<BlockSource> data_block_source_;
             BloomFilter bloom_filter_;
             bool has_bloom_filter_ = false;
-            mutable std::uint64_t data_block_read_count_ = 0;
             friend class SSTableIterator;
     };
 

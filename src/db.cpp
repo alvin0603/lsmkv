@@ -47,13 +47,31 @@ namespace lsmkv
     {
         return open_;
     }
+    std::uint64_t DB::blockCacheHitCount() const
+    {
+        if(!block_cache_)
+            return 0;
+        return block_cache_->hitCount();
+    }
+    std::uint64_t DB::blockCacheMissCount() const
+    {
+        if(!block_cache_)
+            return 0;
+        return block_cache_->missCount();
+    }
+    double DB::blockCacheHitRate() const
+    {
+        if(!block_cache_)
+            return 0.0;
+        return block_cache_->hitRate();
+    }
     std::unique_ptr<DBIterator> DB::newIterator() const
     {
         if(!open_)
             return nullptr;
         return std::unique_ptr<DBIterator>(new DBIterator(this));
     }
-    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size, std::size_t l0_compaction_trigger)
+    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size, std::size_t l0_compaction_trigger, std::size_t block_cache_capacity)
     {
         auto db = std::unique_ptr<DB>(new DB());
         if(memtable_flush_size == 0 || l0_compaction_trigger == 0)
@@ -63,6 +81,7 @@ namespace lsmkv
         db->sync_interval_ = sync_interval;
         db->memtable_flush_size_ = memtable_flush_size;
         db->l0_compaction_trigger_ = l0_compaction_trigger;
+        db->block_cache_ = std::make_shared<BlockCache>(block_cache_capacity);
         const std::filesystem::path directory{std::string(path)};
         std::error_code error;
         std::filesystem::create_directories(directory, error);
@@ -92,7 +111,7 @@ namespace lsmkv
             const std::uintmax_t actual_file_size = std::filesystem::file_size(table_path, table_error);
             if(table_error || actual_file_size != table.file_size)
                 return nullptr;
-            auto reader = std::make_unique<SSTableReader>(table_path.string());
+            auto reader = std::make_unique<SSTableReader>(table_path.string(), table.file_id, db->block_cache_);
             if(!reader->isOpen())
                 return nullptr;
             db->opened_tables_.push_back({table, std::move(reader)});
@@ -308,7 +327,7 @@ namespace lsmkv
         table_metadata.file_size = static_cast<std::uint64_t>(table_file_size);
         table_metadata.smallest_key = immutable_memtable_->begin()->first;
         table_metadata.largest_key = std::prev(immutable_memtable_->end())->first;
-        auto table_reader = std::make_unique<SSTableReader>(table_path.string());
+        auto table_reader = std::make_unique<SSTableReader>(table_path.string(), table_id, block_cache_);
         if(!table_reader->isOpen())
             return handleFlushFailure(); // double check the SSTable
         ManifestState tmp_manifest_state = manifest_state_;
@@ -378,7 +397,7 @@ namespace lsmkv
         output_metadata.largest_key = std::move(output.largest_key);
 
         // create reader for new SSTable
-        auto output_reader = std::make_unique<SSTableReader>(output_path.string());
+        auto output_reader = std::make_unique<SSTableReader>(output_path.string(), output_id, block_cache_);
         if(!output_reader->isOpen())
         {
             std::error_code remove_error;

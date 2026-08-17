@@ -312,6 +312,36 @@ TEST_CASE("DB reads the newest result across MemTables and L0 SSTables", "[db]")
     std::filesystem::remove_all(path);
 }
 
+TEST_CASE("DB reports shared block cache statistics", "[db][block-cache]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_block_cache_test";
+    std::filesystem::remove_all(path);
+    auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncEveryWrite, 1, lsmkv::kDefaultMemTableSize, lsmkv::kDefaultL0CompactionTrigger, 1024);
+    REQUIRE(db != nullptr);
+    REQUIRE(db->put("apple", "red"));
+    REQUIRE(db->put("banana", "yellow"));
+    REQUIRE(db->flush());
+    REQUIRE(db->blockCacheHitCount() == 0);
+    REQUIRE(db->blockCacheMissCount() == 0);
+    REQUIRE(db->blockCacheHitRate() == 0.0);
+    std::string value;
+    REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(db->blockCacheHitCount() == 0);
+    REQUIRE(db->blockCacheMissCount() == 1);
+    REQUIRE(db->get("banana", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "yellow");
+    REQUIRE(db->blockCacheHitCount() == 1);
+    REQUIRE(db->blockCacheMissCount() == 1);
+    REQUIRE(db->blockCacheHitRate() == 0.5);
+    REQUIRE(db->get("missing", value) == lsmkv::LookupResult::kNotFound);
+    REQUIRE(db->blockCacheHitCount() == 1);
+    REQUIRE(db->blockCacheMissCount() == 1);
+    db->close();
+    REQUIRE(db->blockCacheHitRate() == 0.5);
+    std::filesystem::remove_all(path);
+}
+
 TEST_CASE("DB compacts L0 SSTables into L1", "[db][compaction]")
 {
     const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_compaction_test";
