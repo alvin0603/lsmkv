@@ -89,15 +89,14 @@ def panel(svg, groups, left, top, width, height, title, x_label, y_min, y_max, c
     def y_position(value):
         return top + height - (value - y_min) * height / (y_max - y_min)
 
-    svg.append(f'<rect class="panel" x="{left - 38}" y="{top - 48}" width="{width + 76}" height="{height + 108}" rx="14"/>')
-    svg.append(f'<text class="panel-title" x="{left + width / 2}" y="{top - 18}" text-anchor="middle">{title}</text>')
-    svg.append(f'<text class="axis-label" x="{left + width / 2}" y="{top + height + 56}" text-anchor="middle">{x_label}</text>')
+    svg.append(f'<text class="panel-title" x="{left + width / 2}" y="{top - 24}" text-anchor="middle">{title}</text>')
+    svg.append(f'<text class="axis-label" x="{left + width / 2}" y="{top + height + 40}" text-anchor="middle">{x_label}</text>')
 
     for i in range(6):
         value = y_min + (y_max - y_min) * i / 5
         y = y_position(value)
         svg.append(f'<line class="grid" x1="{left}" y1="{y:.2f}" x2="{left + width}" y2="{y:.2f}"/>')
-        svg.append(f'<text class="tick" x="{left - 14}" y="{y + 5:.2f}" text-anchor="end">{value:.{decimals}f}</text>')
+        svg.append(f'<text class="tick" x="{left - 12}" y="{y + 5:.2f}" text-anchor="end">{value:.{decimals}f}</text>')
 
     svg.append(f'<line class="axis" x1="{left}" y1="{top}" x2="{left}" y2="{top + height}"/>')
     svg.append(f'<line class="axis" x1="{left}" y1="{top + height}" x2="{left + width}" y2="{top + height}"/>')
@@ -106,22 +105,16 @@ def panel(svg, groups, left, top, width, height, title, x_label, y_min, y_max, c
     for index, (setting, points, median) in enumerate(groups):
         x = x_position(index)
         coordinates.append(f"{x:.2f},{y_position(median):.2f}")
-        svg.append(f'<text class="tick" x="{x:.2f}" y="{top + height + 26}" text-anchor="middle">{setting:g}</text>')
+        svg.append(f'<text class="tick" x="{x:.2f}" y="{top + height + 24}" text-anchor="middle">{setting:g}</text>')
         for point_index, point in enumerate(points):
-            offset = (point_index - (len(points) - 1) / 2) * 9
-            svg.append(f'<circle cx="{x + offset:.2f}" cy="{y_position(point):.2f}" r="5" fill="{color}" opacity="0.22"/>')
+            offset = (point_index - (len(points) - 1) / 2) * 8
+            svg.append(f'<circle cx="{x + offset:.2f}" cy="{y_position(point):.2f}" r="4" fill="{color}" opacity="0.3"/>')
 
-    svg.append(f'<polyline points="{" ".join(coordinates)}" fill="none" stroke="{color}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>')
+    svg.append(f'<polyline points="{" ".join(coordinates)}" fill="none" stroke="{color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>')
     for index, (_, _, median) in enumerate(groups):
         x = x_position(index)
         y = y_position(median)
-        label_x = x
-        if index == 0:
-            label_x += 18
-        elif index == len(groups) - 1:
-            label_x -= 18
-        svg.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="7" fill="white" stroke="{color}" stroke-width="4"/>')
-        svg.append(f'<text class="value" x="{label_x:.2f}" y="{y - 16:.2f}" text-anchor="middle">{median:.{decimals}f}</text>')
+        svg.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="5.5" fill="white" stroke="{color}" stroke-width="2.5"/>')
 
 
 def plot(rows, metric, title, output, scale=1.0, decimals=1):
@@ -137,26 +130,23 @@ def plot(rows, metric, title, output, scale=1.0, decimals=1):
     y_max = math.ceil((y_max + padding) * 10) / 10
 
     svg = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620">',
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">',
         '<style>',
-        'text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #172033; }',
-        '.title { font-size: 28px; font-weight: 700; }',
-        '.subtitle { font-size: 16px; fill: #64748b; }',
-        '.panel-title { font-size: 20px; font-weight: 650; }',
-        '.axis-label { font-size: 17px; font-weight: 600; fill: #334155; }',
-        '.tick { font-size: 15px; fill: #475569; }',
-        '.value { font-size: 15px; font-weight: 700; }',
-        '.panel { fill: white; stroke: #e2e8f0; stroke-width: 1.5; }',
-        '.grid { stroke: #e8edf3; stroke-width: 1; }',
-        '.axis { stroke: #94a3b8; stroke-width: 1.5; }',
+        'text { font-family: Arial, Helvetica, sans-serif; fill: #111; }',
+        '.title { font-size: 26px; font-weight: 700; }',
+        '.panel-title { font-size: 18px; font-weight: 700; }',
+        '.axis-label { font-size: 15px; }',
+        '.tick { font-size: 14px; fill: #333; }',
+        '.note { font-size: 13px; fill: #444; }',
+        '.grid { stroke: #ddd; stroke-width: 1; }',
+        '.axis { stroke: #333; stroke-width: 1.4; }',
         '</style>',
-        '<rect width="100%" height="100%" fill="#f5f7fb"/>',
-        f'<text class="title" x="700" y="42" text-anchor="middle">{title}</text>',
-        '<text class="subtitle" x="700" y="70" text-anchor="middle">Median of three runs, 64 MiB allocation budget</text>',
-        '<text class="subtitle" x="700" y="602" text-anchor="middle">Faded points show individual runs</text>'
+        '<rect width="100%" height="100%" fill="white"/>',
+        f'<text class="title" x="600" y="36" text-anchor="middle">{title}</text>',
+        '<text class="note" x="600" y="503" text-anchor="middle">Line shows the median; dots are individual runs.</text>'
     ]
-    panel(svg, bloom, 125, 145, 455, 340, "Bloom filter", "Bits per key", y_min, y_max, "#0f766e", decimals)
-    panel(svg, memtable, 820, 145, 455, 340, "MemTable", "Size (MiB)", y_min, y_max, "#e05a33", decimals)
+    panel(svg, bloom, 105, 110, 410, 300, "Bloom filter", "Bits per key", y_min, y_max, "#245a73", decimals)
+    panel(svg, memtable, 685, 110, 410, 300, "MemTable", "Size (MiB)", y_min, y_max, "#9a4d32", decimals)
     svg.append("</svg>")
     output.write_text("\n".join(svg) + "\n")
 

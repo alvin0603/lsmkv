@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1060" viewBox="0 0 1000 1060">
+<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#111"/>
+    </marker>
+</defs>
+<style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #111; }
+    .heading { font-size: 25px; font-weight: 700; }
+    .label { font-size: 19px; font-weight: 700; }
+    .text { font-size: 17px; }
+    .small { font-size: 15px; }
+    .mono { font-family: Consolas, "Liberation Mono", monospace; }
+    .box { fill: white; stroke: #111; stroke-width: 2; }
+    .light { fill: #f2f2f2; stroke: #111; stroke-width: 2; }
+    .line { fill: none; stroke: #111; stroke-width: 2; marker-end: url(#arrow); }
+    .read { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 9 6; marker-end: url(#arrow); }
+</style>
+
+<rect width="1000" height="1060" fill="white"/>
+
+<text class="heading" x="35" y="38">Point lookup</text>
+<line x1="35" y1="55" x2="965" y2="55" stroke="#111" stroke-width="1.5"/>
+
+<text class="label" x="25" y="162">get(key)</text>
+
+<rect class="box" x="130" y="105" width="230" height="100"/>
+<text class="text" x="245" y="145" text-anchor="middle">active MemTable</text>
+<text class="small" x="245" y="176" text-anchor="middle">then immutable</text>
+
+<rect class="box" x="430" y="105" width="230" height="100"/>
+<text class="text" x="545" y="139" text-anchor="middle">SSTable order</text>
+<text class="small" x="545" y="168" text-anchor="middle">L0 newest, then</text>
+<text class="small" x="545" y="190" text-anchor="middle">L1 newest</text>
+
+<polygon class="box" points="740,105 920,105 960,155 920,205 740,205 700,155"/>
+<text class="text" x="830" y="148" text-anchor="middle">Bloom says</text>
+<text class="small mono" x="830" y="178" text-anchor="middle">may contain?</text>
+
+<path class="read" d="M 108 155 L 120 155"/>
+<path class="read" d="M 370 155 L 420 155"/>
+<path class="read" d="M 670 155 L 690 155"/>
+<text class="small" x="395" y="143" text-anchor="middle">miss</text>
+
+<rect class="box" x="130" y="310" width="230" height="110"/>
+<text class="text" x="245" y="352" text-anchor="middle">binary search index</text>
+<text class="small mono" x="245" y="384" text-anchor="middle">first last_key &gt;= target</text>
+
+<rect class="light" x="430" y="310" width="230" height="110"/>
+<text class="text" x="545" y="352" text-anchor="middle">shared LRU cache</text>
+<text class="small mono" x="545" y="384" text-anchor="middle">(file_id, offset)</text>
+
+<rect class="box" x="730" y="310" width="230" height="110"/>
+<text class="text" x="845" y="346" text-anchor="middle">scan data block</text>
+<text class="small mono" x="845" y="378" text-anchor="middle">kPut / kDelete /</text>
+<text class="small mono" x="845" y="400" text-anchor="middle">next table</text>
+
+<rect class="box" x="430" y="455" width="230" height="55"/>
+<text class="small mono" x="545" y="489" text-anchor="middle">pread + cache insert</text>
+
+<path class="read" d="M 900 205 L 900 275 L 245 275 L 245 300"/>
+<text class="small" x="880" y="260" text-anchor="end">yes</text>
+<path class="read" d="M 760 205 L 760 240 L 545 240 L 545 215"/>
+<text class="small" x="650" y="231" text-anchor="middle">no: next table</text>
+<path class="read" d="M 370 365 L 420 365"/>
+<path class="read" d="M 670 350 L 720 350"/>
+<text class="small" x="695" y="338" text-anchor="middle">hit</text>
+<path class="read" d="M 545 430 L 545 445"/>
+<text class="small" x="565" y="442">miss</text>
+<path class="read" d="M 670 482 L 700 482 L 700 395 L 720 395"/>
+
+<text class="heading" x="35" y="590">Ordered iteration</text>
+<line x1="35" y1="607" x2="965" y2="607" stroke="#111" stroke-width="1.5"/>
+
+<text class="label" x="20" y="757">newIterator()</text>
+
+<rect class="box" x="170" y="700" width="240" height="100"/>
+<text class="text" x="290" y="742" text-anchor="middle">MemTable + SSTable</text>
+<text class="small" x="290" y="773" text-anchor="middle">source iterators</text>
+
+<circle class="light" cx="540" cy="750" r="60"/>
+<text class="text" x="540" y="745" text-anchor="middle">min-heap</text>
+<text class="small" x="540" y="776" text-anchor="middle">k-way merge</text>
+
+<rect class="box" x="650" y="700" width="300" height="100"/>
+<text class="text" x="800" y="742" text-anchor="middle">keep highest sequence</text>
+<text class="small" x="800" y="773" text-anchor="middle">once per user key</text>
+
+<polygon class="box" points="290,870 510,870 550,920 510,970 290,970 250,920"/>
+<text class="text" x="400" y="913" text-anchor="middle">tombstone?</text>
+<text class="small" x="400" y="944" text-anchor="middle">skip deleted key</text>
+
+<text class="label" x="800" y="913" text-anchor="middle">sorted keys</text>
+<text class="small" x="800" y="944" text-anchor="middle">one visible version</text>
+
+<path class="line" d="M 145 750 L 160 750"/>
+<path class="line" d="M 420 750 L 470 750"/>
+<path class="line" d="M 610 750 L 640 750"/>
+<path class="line" d="M 800 810 L 800 840 L 400 840 L 400 860"/>
+<path class="line" d="M 560 920 L 690 920"/>
+
+<line x1="35" y1="1025" x2="105" y2="1025" stroke="#111" stroke-width="2" stroke-dasharray="9 6" marker-end="url(#arrow)"/>
+<text class="small" x="125" y="1031">point read</text>
+<line x1="260" y1="1025" x2="330" y2="1025" stroke="#111" stroke-width="2" marker-end="url(#arrow)"/>
+<text class="small" x="350" y="1031">iterator flow</text>
+</svg>

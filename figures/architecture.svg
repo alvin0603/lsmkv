@@ -1,184 +1,112 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="880" viewBox="0 0 1600 880">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1050" viewBox="0 0 1000 1050">
 <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#111"/>
     </marker>
 </defs>
 <style>
     text { font-family: Arial, Helvetica, sans-serif; fill: #111; }
-    .heading { font-size: 20px; font-weight: 700; }
-    .label { font-size: 16px; font-weight: 700; }
-    .text { font-size: 14px; }
-    .small { font-size: 12px; }
+    .heading { font-size: 25px; font-weight: 700; }
+    .label { font-size: 19px; font-weight: 700; }
+    .text { font-size: 17px; }
+    .small { font-size: 15px; }
     .mono { font-family: Consolas, "Liberation Mono", monospace; }
-    .box { fill: white; stroke: #111; stroke-width: 1.7; }
-    .light { fill: #f2f2f2; stroke: #111; stroke-width: 1.7; }
-    .line { fill: none; stroke: #111; stroke-width: 1.8; marker-end: url(#arrow); }
-    .read { fill: none; stroke: #111; stroke-width: 1.6; stroke-dasharray: 8 5; marker-end: url(#arrow); }
+    .box { fill: white; stroke: #111; stroke-width: 2; }
+    .light { fill: #f2f2f2; stroke: #111; stroke-width: 2; }
+    .line { fill: none; stroke: #111; stroke-width: 2; marker-end: url(#arrow); }
 </style>
 
-<rect width="1600" height="880" fill="white"/>
+<rect width="1000" height="1050" fill="white"/>
 
-<text class="heading" x="55" y="42">(a) Write, flush and file lifecycle</text>
-<line x1="55" y1="55" x2="1545" y2="55" stroke="#111" stroke-width="1"/>
+<text class="heading" x="35" y="38">Write and flush</text>
+<line x1="35" y1="55" x2="965" y2="55" stroke="#111" stroke-width="1.5"/>
 
-<!-- Public API -->
-<rect class="box" x="60" y="145" width="175" height="86"/>
-<text class="label" x="147" y="178" text-anchor="middle">DB API</text>
-<text class="text mono" x="147" y="204" text-anchor="middle">put / deleteKey</text>
+<rect class="box" x="50" y="105" width="250" height="100"/>
+<text class="label" x="175" y="145" text-anchor="middle">DB API</text>
+<text class="text mono" x="175" y="176" text-anchor="middle">put / deleteKey</text>
 
-<!-- WAL cylinder -->
-<path class="light" d="M 295 160 C 295 145, 465 145, 465 160 L 465 220 C 465 235, 295 235, 295 220 Z"/>
-<ellipse cx="380" cy="160" rx="85" ry="15" fill="#f2f2f2" stroke="#111" stroke-width="1.7"/>
-<path d="M 295 220 C 295 235, 465 235, 465 220" fill="none" stroke="#111" stroke-width="1.7"/>
-<text class="label" x="380" y="195" text-anchor="middle">WAL</text>
-<text class="small mono" x="380" y="216" text-anchor="middle">CRC | length | payload</text>
+<path class="light" d="M 375 120 C 375 105, 625 105, 625 120 L 625 190 C 625 205, 375 205, 375 190 Z"/>
+<ellipse cx="500" cy="120" rx="125" ry="15" fill="#f2f2f2" stroke="#111" stroke-width="2"/>
+<path d="M 375 190 C 375 205, 625 205, 625 190" fill="none" stroke="#111" stroke-width="2"/>
+<text class="label" x="500" y="159" text-anchor="middle">WAL</text>
+<text class="small mono" x="500" y="187" text-anchor="middle">CRC | length | payload</text>
 
-<!-- MemTable with sorted rows -->
-<rect class="box" x="525" y="120" width="205" height="135"/>
-<rect class="light" x="525" y="120" width="205" height="35"/>
-<text class="label" x="627" y="143" text-anchor="middle">Active MemTable</text>
-<line x1="525" y1="188" x2="730" y2="188" stroke="#999"/>
-<line x1="525" y1="221" x2="730" y2="221" stroke="#999"/>
-<text class="small mono" x="542" y="177">apple@51</text>
-<text class="small mono" x="542" y="210">cat@42</text>
-<text class="small mono" x="542" y="243">dog@37</text>
+<rect class="box" x="700" y="80" width="250" height="150"/>
+<rect class="light" x="700" y="80" width="250" height="40"/>
+<text class="label" x="825" y="107" text-anchor="middle">Active MemTable</text>
+<line x1="700" y1="157" x2="950" y2="157" stroke="#999"/>
+<line x1="700" y1="194" x2="950" y2="194" stroke="#999"/>
+<text class="small mono" x="718" y="145">apple@51</text>
+<text class="small mono" x="718" y="182">cat@42</text>
+<text class="small mono" x="718" y="219">dog@37</text>
 
-<rect class="box" x="770" y="120" width="205" height="135"/>
-<rect class="light" x="770" y="120" width="205" height="35"/>
-<text class="label" x="872" y="143" text-anchor="middle">Immutable MemTable</text>
-<line x1="770" y1="188" x2="975" y2="188" stroke="#999"/>
-<line x1="770" y1="221" x2="975" y2="221" stroke="#999"/>
-<text class="small mono" x="787" y="177">sorted InternalKeys</text>
-<text class="small mono" x="787" y="210">old WAL epoch</text>
-<text class="small mono" x="787" y="243">readable while flushing</text>
+<path class="line" d="M 300 155 L 365 155"/>
+<text class="small" x="332" y="143" text-anchor="middle">1</text>
+<path class="line" d="M 635 155 L 690 155"/>
+<text class="small" x="662" y="143" text-anchor="middle">2</text>
 
-<!-- New SSTable as stacked files -->
-<rect class="box" x="1044" y="137" width="175" height="105"/>
-<rect class="box" x="1036" y="129" width="175" height="105"/>
-<rect class="box" x="1028" y="121" width="175" height="105"/>
-<text class="label" x="1115" y="157" text-anchor="middle">new .sst</text>
-<text class="small mono" x="1115" y="180" text-anchor="middle">data blocks</text>
-<text class="small mono" x="1115" y="199" text-anchor="middle">index | Bloom | footer</text>
+<rect class="box" x="50" y="310" width="250" height="150"/>
+<rect class="light" x="50" y="310" width="250" height="40"/>
+<text class="label" x="175" y="337" text-anchor="middle">Immutable MemTable</text>
+<line x1="50" y1="387" x2="300" y2="387" stroke="#999"/>
+<line x1="50" y1="424" x2="300" y2="424" stroke="#999"/>
+<text class="small mono" x="68" y="375">sorted InternalKeys</text>
+<text class="small mono" x="68" y="412">old WAL epoch</text>
+<text class="small mono" x="68" y="449">readable while flushing</text>
 
-<!-- Manifest as a document -->
-<path class="box" d="M 1260 120 L 1410 120 L 1450 160 L 1450 245 L 1260 245 Z"/>
-<path d="M 1410 120 L 1410 160 L 1450 160" fill="none" stroke="#111" stroke-width="1.7"/>
-<text class="label" x="1355" y="180" text-anchor="middle">MANIFEST</text>
-<text class="small mono" x="1355" y="202" text-anchor="middle">live files + epochs</text>
-<text class="small" x="1355" y="224" text-anchor="middle">commit point</text>
+<rect class="box" x="391" y="331" width="240" height="125"/>
+<rect class="box" x="383" y="323" width="240" height="125"/>
+<rect class="box" x="375" y="315" width="240" height="125"/>
+<text class="label" x="495" y="354" text-anchor="middle">new .sst</text>
+<text class="small mono" x="495" y="385" text-anchor="middle">data blocks</text>
+<text class="small mono" x="495" y="413" text-anchor="middle">index | Bloom | footer</text>
 
-<path class="line" d="M 235 188 L 285 188"/>
-<text class="small" x="265" y="176" text-anchor="middle">1</text>
-<path class="line" d="M 475 188 L 515 188"/>
-<text class="small" x="495" y="176" text-anchor="middle">2</text>
-<path class="line" d="M 735 188 L 760 188"/>
-<text class="small" x="750" y="174" text-anchor="middle">freeze</text>
-<path class="line" d="M 980 188 L 1018 188"/>
-<text class="small" x="1001" y="174" text-anchor="middle">flush</text>
-<path class="line" d="M 1224 188 L 1250 188"/>
+<path class="box" d="M 700 310 L 900 310 L 950 360 L 950 460 L 700 460 Z"/>
+<path d="M 900 310 L 900 360 L 950 360" fill="none" stroke="#111" stroke-width="2"/>
+<text class="label" x="825" y="376" text-anchor="middle">MANIFEST</text>
+<text class="small mono" x="825" y="407" text-anchor="middle">live files + epochs</text>
+<text class="small" x="825" y="435" text-anchor="middle">commit point</text>
 
-<text class="text" x="292" y="275">1. append record and apply sync policy</text>
-<text class="text" x="292" y="299">2. insert the same operation into the ordered MemTable</text>
-<text class="text" x="292" y="323">The old WAL is removed after the new SSTable is published by MANIFEST.</text>
+<path class="line" d="M 825 230 L 825 270 L 175 270 L 175 300"/>
+<text class="small" x="500" y="259" text-anchor="middle">freeze</text>
+<path class="line" d="M 300 385 L 365 385"/>
+<text class="small" x="332" y="373" text-anchor="middle">flush</text>
+<path class="line" d="M 641 385 L 690 385"/>
 
-<!-- Compaction / live file set -->
-<rect class="box" x="1020" y="300" width="170" height="72"/>
-<text class="label" x="1105" y="329" text-anchor="middle">Level 0</text>
-<text class="small" x="1105" y="351" text-anchor="middle">overlapping, newest first</text>
+<text class="text" x="50" y="505">1. append record and apply sync policy</text>
+<text class="text" x="50" y="535">2. insert the same operation into the ordered MemTable</text>
+<text class="text" x="50" y="565">The old WAL is removed after the new SSTable is published by MANIFEST.</text>
 
-<polygon class="light" points="1270,300 1405,300 1450,336 1405,372 1270,372 1225,336"/>
-<text class="label" x="1337" y="330" text-anchor="middle">k-way merge</text>
-<text class="small" x="1337" y="351" text-anchor="middle">keep newest + tombstone</text>
+<text class="heading" x="35" y="625">File lifecycle and L0 compaction</text>
+<line x1="35" y1="642" x2="965" y2="642" stroke="#111" stroke-width="1.5"/>
 
-<rect class="box" x="1252" y="410" width="170" height="72"/>
-<text class="label" x="1337" y="439" text-anchor="middle">Level 1</text>
-<text class="small" x="1337" y="461" text-anchor="middle">one output per trigger</text>
+<path class="box" d="M 60 690 L 260 690 L 320 750 L 320 810 L 60 810 Z"/>
+<path d="M 260 690 L 260 750 L 320 750" fill="none" stroke="#111" stroke-width="2"/>
+<text class="label" x="190" y="748" text-anchor="middle">MANIFEST</text>
+<text class="small mono" x="190" y="777" text-anchor="middle">live files + epochs</text>
+<text class="small" x="190" y="800" text-anchor="middle">commit point</text>
 
-<path class="line" d="M 1300 245 L 1300 270 L 1105 270 L 1105 290"/>
-<text class="small" x="1200" y="263" text-anchor="middle">publish</text>
-<path class="line" d="M 1190 336 L 1215 336"/>
-<path class="line" d="M 1337 372 L 1337 400"/>
-<path class="line" d="M 1422 446 L 1490 446 L 1490 210 L 1460 210"/>
-<text class="small" x="1456" y="438" text-anchor="middle">commit</text>
-<text class="small" x="1020" y="505">Remove L0 inputs only after the MANIFEST commit.</text>
+<rect class="box" x="680" y="700" width="250" height="100"/>
+<text class="label" x="805" y="741" text-anchor="middle">Level 0</text>
+<text class="small" x="805" y="772" text-anchor="middle">overlapping, newest first</text>
 
-<text class="heading" x="55" y="535">(b) Point lookup and ordered iteration</text>
-<line x1="55" y1="548" x2="1545" y2="548" stroke="#111" stroke-width="1"/>
+<polygon class="light" points="690,845 910,845 950,895 910,945 690,945 650,895"/>
+<text class="label" x="800" y="887" text-anchor="middle">k-way merge</text>
+<text class="small" x="800" y="918" text-anchor="middle">keep newest + tombstone</text>
 
-<!-- Point lookup strip -->
-<text class="label" x="60" y="608">get(key)</text>
-<rect class="box" x="155" y="575" width="175" height="66"/>
-<text class="text" x="242" y="602" text-anchor="middle">active MemTable</text>
-<text class="small" x="242" y="622" text-anchor="middle">then immutable</text>
+<rect class="box" x="60" y="845" width="260" height="100"/>
+<text class="label" x="190" y="886" text-anchor="middle">Level 1</text>
+<text class="small" x="190" y="917" text-anchor="middle">one output per trigger</text>
 
-<rect class="box" x="390" y="575" width="175" height="66"/>
-<text class="text" x="477" y="602" text-anchor="middle">SSTable order</text>
-<text class="small" x="477" y="622" text-anchor="middle">L0 newest, then L1 newest</text>
+<path class="line" d="M 320 750 L 670 750"/>
+<text class="small" x="495" y="738" text-anchor="middle">publish</text>
+<path class="line" d="M 805 800 L 805 835"/>
+<path class="line" d="M 640 895 L 330 895"/>
+<path class="line" d="M 190 835 L 190 820"/>
+<text class="small" x="210" y="832">commit</text>
 
-<polygon class="box" points="625,575 790,575 820,608 790,641 625,641 595,608"/>
-<text class="text" x="707" y="604" text-anchor="middle">Bloom says</text>
-<text class="small mono" x="707" y="624" text-anchor="middle">may contain?</text>
+<text class="text" x="60" y="985">Remove L0 inputs only after the MANIFEST commit.</text>
 
-<rect class="box" x="880" y="575" width="175" height="66"/>
-<text class="text" x="967" y="602" text-anchor="middle">binary search index</text>
-<text class="small" x="967" y="622" text-anchor="middle">first last_key &gt;= target</text>
-
-<rect class="light" x="1115" y="575" width="175" height="66"/>
-<text class="text" x="1202" y="602" text-anchor="middle">shared LRU cache</text>
-<text class="small mono" x="1202" y="622" text-anchor="middle">(file_id, offset)</text>
-
-<rect class="box" x="1350" y="575" width="185" height="66"/>
-<text class="text" x="1442" y="602" text-anchor="middle">scan data block</text>
-<text class="small" x="1442" y="622" text-anchor="middle">kPut / kDelete / next table</text>
-
-<rect class="box" x="1115" y="655" width="175" height="38"/>
-<text class="small mono" x="1202" y="679" text-anchor="middle">pread + cache insert</text>
-
-<path class="read" d="M 125 603 L 155 603"/>
-<path class="read" d="M 330 608 L 390 608"/>
-<path class="read" d="M 565 608 L 595 608"/>
-<path class="read" d="M 820 608 L 880 608"/>
-<path class="read" d="M 707 641 L 707 674 L 477 674 L 477 641"/>
-<path class="read" d="M 1055 608 L 1115 608"/>
-<path class="read" d="M 1290 608 L 1350 608"/>
-<path class="read" d="M 1202 641 L 1202 655"/>
-<path class="read" d="M 1290 674 L 1325 674 L 1325 625 L 1350 625"/>
-<text class="small" x="360" y="596" text-anchor="middle">miss</text>
-<text class="small" x="850" y="596" text-anchor="middle">yes</text>
-<text class="small" x="610" y="666" text-anchor="middle">no: next table</text>
-<text class="small" x="1318" y="597" text-anchor="middle">hit</text>
-<text class="small" x="1222" y="651">miss</text>
-
-<!-- Scan strip -->
-<text class="label" x="60" y="742">newIterator()</text>
-<rect class="box" x="185" y="705" width="235" height="72"/>
-<text class="text" x="302" y="734" text-anchor="middle">MemTable + SSTable</text>
-<text class="small" x="302" y="756" text-anchor="middle">source iterators</text>
-
-<circle class="light" cx="570" cy="741" r="54"/>
-<text class="text" x="570" y="737" text-anchor="middle">min-heap</text>
-<text class="small" x="570" y="757" text-anchor="middle">k-way merge</text>
-
-<rect class="box" x="730" y="705" width="245" height="72"/>
-<text class="text" x="852" y="734" text-anchor="middle">keep highest sequence</text>
-<text class="small" x="852" y="756" text-anchor="middle">once per user key</text>
-
-<polygon class="box" points="1135,705 1320,705 1350,741 1320,777 1135,777 1105,741"/>
-<text class="text" x="1227" y="737" text-anchor="middle">tombstone?</text>
-<text class="small" x="1227" y="757" text-anchor="middle">skip deleted key</text>
-
-<text class="label" x="1445" y="737" text-anchor="middle">sorted keys</text>
-<text class="small" x="1445" y="758" text-anchor="middle">one visible version</text>
-
-<path class="line" d="M 168 741 L 185 741"/>
-<path class="line" d="M 420 741 L 516 741"/>
-<path class="line" d="M 624 741 L 730 741"/>
-<path class="line" d="M 975 741 L 1105 741"/>
-<path class="line" d="M 1350 741 L 1395 741"/>
-
-<line x1="60" y1="835" x2="120" y2="835" stroke="#111" stroke-width="1.8" marker-end="url(#arrow)"/>
-<text class="small" x="135" y="840">write / file lifecycle</text>
-<line x1="340" y1="835" x2="400" y2="835" stroke="#111" stroke-width="1.6" stroke-dasharray="8 5" marker-end="url(#arrow)"/>
-<text class="small" x="415" y="840">read path</text>
+<line x1="60" y1="1020" x2="130" y2="1020" stroke="#111" stroke-width="2" marker-end="url(#arrow)"/>
+<text class="small" x="150" y="1026">write / file lifecycle</text>
 </svg>

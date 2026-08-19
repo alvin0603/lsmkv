@@ -1,102 +1,89 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
 <style>
-text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #172033; }
-.title { font-size: 28px; font-weight: 700; }
-.subtitle { font-size: 16px; fill: #64748b; }
-.panel-title { font-size: 20px; font-weight: 650; }
-.axis-label { font-size: 17px; font-weight: 600; fill: #334155; }
-.tick { font-size: 15px; fill: #475569; }
-.value { font-size: 15px; font-weight: 700; }
-.panel { fill: white; stroke: #e2e8f0; stroke-width: 1.5; }
-.grid { stroke: #e8edf3; stroke-width: 1; }
-.axis { stroke: #94a3b8; stroke-width: 1.5; }
+text { font-family: Arial, Helvetica, sans-serif; fill: #111; }
+.title { font-size: 26px; font-weight: 700; }
+.panel-title { font-size: 18px; font-weight: 700; }
+.axis-label { font-size: 15px; }
+.tick { font-size: 14px; fill: #333; }
+.note { font-size: 13px; fill: #444; }
+.grid { stroke: #ddd; stroke-width: 1; }
+.axis { stroke: #333; stroke-width: 1.4; }
 </style>
-<rect width="100%" height="100%" fill="#f5f7fb"/>
-<text class="title" x="700" y="42" text-anchor="middle">Read p99 latency (µs)</text>
-<text class="subtitle" x="700" y="70" text-anchor="middle">Median of three runs, 64 MiB allocation budget</text>
-<text class="subtitle" x="700" y="602" text-anchor="middle">Faded points show individual runs</text>
-<rect class="panel" x="87" y="97" width="531" height="448" rx="14"/>
-<text class="panel-title" x="352.5" y="127" text-anchor="middle">Bloom filter</text>
-<text class="axis-label" x="352.5" y="541" text-anchor="middle">Bits per key</text>
-<line class="grid" x1="125" y1="485.00" x2="580" y2="485.00"/>
-<text class="tick" x="111" y="490.00" text-anchor="end">165.1</text>
-<line class="grid" x1="125" y1="417.00" x2="580" y2="417.00"/>
-<text class="tick" x="111" y="422.00" text-anchor="end">178.0</text>
-<line class="grid" x1="125" y1="349.00" x2="580" y2="349.00"/>
-<text class="tick" x="111" y="354.00" text-anchor="end">191.0</text>
-<line class="grid" x1="125" y1="281.00" x2="580" y2="281.00"/>
-<text class="tick" x="111" y="286.00" text-anchor="end">203.9</text>
-<line class="grid" x1="125" y1="213.00" x2="580" y2="213.00"/>
-<text class="tick" x="111" y="218.00" text-anchor="end">216.9</text>
-<line class="grid" x1="125" y1="145.00" x2="580" y2="145.00"/>
-<text class="tick" x="111" y="150.00" text-anchor="end">229.8</text>
-<line class="axis" x1="125" y1="145" x2="125" y2="485"/>
-<line class="axis" x1="125" y1="485" x2="580" y2="485"/>
-<text class="tick" x="125.00" y="511" text-anchor="middle">2</text>
-<circle cx="116.00" cy="356.82" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="125.00" cy="320.84" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="134.00" cy="316.02" r="5" fill="#0f766e" opacity="0.22"/>
-<text class="tick" x="276.67" y="511" text-anchor="middle">6</text>
-<circle cx="267.67" cy="360.72" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="276.67" cy="313.07" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="285.67" cy="365.49" r="5" fill="#0f766e" opacity="0.22"/>
-<text class="tick" x="428.33" y="511" text-anchor="middle">10</text>
-<circle cx="419.33" cy="358.74" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="428.33" cy="345.11" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="437.33" cy="343.61" r="5" fill="#0f766e" opacity="0.22"/>
-<text class="tick" x="580.00" y="511" text-anchor="middle">14</text>
-<circle cx="571.00" cy="190.39" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="580.00" cy="349.43" r="5" fill="#0f766e" opacity="0.22"/>
-<circle cx="589.00" cy="344.48" r="5" fill="#0f766e" opacity="0.22"/>
-<polyline points="125.00,320.84 276.67,360.72 428.33,345.11 580.00,344.48" fill="none" stroke="#0f766e" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="125.00" cy="320.84" r="7" fill="white" stroke="#0f766e" stroke-width="4"/>
-<text class="value" x="143.00" y="304.84" text-anchor="middle">196.3</text>
-<circle cx="276.67" cy="360.72" r="7" fill="white" stroke="#0f766e" stroke-width="4"/>
-<text class="value" x="276.67" y="344.72" text-anchor="middle">188.8</text>
-<circle cx="428.33" cy="345.11" r="7" fill="white" stroke="#0f766e" stroke-width="4"/>
-<text class="value" x="428.33" y="329.11" text-anchor="middle">191.7</text>
-<circle cx="580.00" cy="344.48" r="7" fill="white" stroke="#0f766e" stroke-width="4"/>
-<text class="value" x="562.00" y="328.48" text-anchor="middle">191.8</text>
-<rect class="panel" x="782" y="97" width="531" height="448" rx="14"/>
-<text class="panel-title" x="1047.5" y="127" text-anchor="middle">MemTable</text>
-<text class="axis-label" x="1047.5" y="541" text-anchor="middle">Size (MiB)</text>
-<line class="grid" x1="820" y1="485.00" x2="1275" y2="485.00"/>
-<text class="tick" x="806" y="490.00" text-anchor="end">165.1</text>
-<line class="grid" x1="820" y1="417.00" x2="1275" y2="417.00"/>
-<text class="tick" x="806" y="422.00" text-anchor="end">178.0</text>
-<line class="grid" x1="820" y1="349.00" x2="1275" y2="349.00"/>
-<text class="tick" x="806" y="354.00" text-anchor="end">191.0</text>
-<line class="grid" x1="820" y1="281.00" x2="1275" y2="281.00"/>
-<text class="tick" x="806" y="286.00" text-anchor="end">203.9</text>
-<line class="grid" x1="820" y1="213.00" x2="1275" y2="213.00"/>
-<text class="tick" x="806" y="218.00" text-anchor="end">216.9</text>
-<line class="grid" x1="820" y1="145.00" x2="1275" y2="145.00"/>
-<text class="tick" x="806" y="150.00" text-anchor="end">229.8</text>
-<line class="axis" x1="820" y1="145" x2="820" y2="485"/>
-<line class="axis" x1="820" y1="485" x2="1275" y2="485"/>
-<text class="tick" x="820.00" y="511" text-anchor="middle">4</text>
-<circle cx="811.00" cy="439.76" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="820.00" cy="362.45" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="829.00" cy="364.74" r="5" fill="#e05a33" opacity="0.22"/>
-<text class="tick" x="971.67" y="511" text-anchor="middle">8</text>
-<circle cx="962.67" cy="317.64" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="971.67" cy="339.27" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="980.67" cy="375.84" r="5" fill="#e05a33" opacity="0.22"/>
-<text class="tick" x="1123.33" y="511" text-anchor="middle">16</text>
-<circle cx="1114.33" cy="370.63" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="1123.33" cy="343.67" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="1132.33" cy="344.60" r="5" fill="#e05a33" opacity="0.22"/>
-<text class="tick" x="1275.00" y="511" text-anchor="middle">32</text>
-<circle cx="1266.00" cy="364.78" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="1275.00" cy="319.08" r="5" fill="#e05a33" opacity="0.22"/>
-<circle cx="1284.00" cy="374.36" r="5" fill="#e05a33" opacity="0.22"/>
-<polyline points="820.00,364.74 971.67,339.27 1123.33,344.60 1275.00,364.78" fill="none" stroke="#e05a33" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="820.00" cy="364.74" r="7" fill="white" stroke="#e05a33" stroke-width="4"/>
-<text class="value" x="838.00" y="348.74" text-anchor="middle">188.0</text>
-<circle cx="971.67" cy="339.27" r="7" fill="white" stroke="#e05a33" stroke-width="4"/>
-<text class="value" x="971.67" y="323.27" text-anchor="middle">192.8</text>
-<circle cx="1123.33" cy="344.60" r="7" fill="white" stroke="#e05a33" stroke-width="4"/>
-<text class="value" x="1123.33" y="328.60" text-anchor="middle">191.8</text>
-<circle cx="1275.00" cy="364.78" r="7" fill="white" stroke="#e05a33" stroke-width="4"/>
-<text class="value" x="1257.00" y="348.78" text-anchor="middle">188.0</text>
+<rect width="100%" height="100%" fill="white"/>
+<text class="title" x="600" y="36" text-anchor="middle">Read p99 latency (µs)</text>
+<text class="note" x="600" y="503" text-anchor="middle">Line shows the median; dots are individual runs.</text>
+<text class="panel-title" x="310.0" y="86" text-anchor="middle">Bloom filter</text>
+<text class="axis-label" x="310.0" y="450" text-anchor="middle">Bits per key</text>
+<line class="grid" x1="105" y1="410.00" x2="515" y2="410.00"/>
+<text class="tick" x="93" y="415.00" text-anchor="end">165.1</text>
+<line class="grid" x1="105" y1="350.00" x2="515" y2="350.00"/>
+<text class="tick" x="93" y="355.00" text-anchor="end">178.0</text>
+<line class="grid" x1="105" y1="290.00" x2="515" y2="290.00"/>
+<text class="tick" x="93" y="295.00" text-anchor="end">191.0</text>
+<line class="grid" x1="105" y1="230.00" x2="515" y2="230.00"/>
+<text class="tick" x="93" y="235.00" text-anchor="end">203.9</text>
+<line class="grid" x1="105" y1="170.00" x2="515" y2="170.00"/>
+<text class="tick" x="93" y="175.00" text-anchor="end">216.9</text>
+<line class="grid" x1="105" y1="110.00" x2="515" y2="110.00"/>
+<text class="tick" x="93" y="115.00" text-anchor="end">229.8</text>
+<line class="axis" x1="105" y1="110" x2="105" y2="410"/>
+<line class="axis" x1="105" y1="410" x2="515" y2="410"/>
+<text class="tick" x="105.00" y="434" text-anchor="middle">2</text>
+<circle cx="97.00" cy="296.90" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="105.00" cy="265.15" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="113.00" cy="260.90" r="4" fill="#245a73" opacity="0.3"/>
+<text class="tick" x="241.67" y="434" text-anchor="middle">6</text>
+<circle cx="233.67" cy="300.34" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="241.67" cy="258.29" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="249.67" cy="304.55" r="4" fill="#245a73" opacity="0.3"/>
+<text class="tick" x="378.33" y="434" text-anchor="middle">10</text>
+<circle cx="370.33" cy="298.60" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="378.33" cy="286.56" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="386.33" cy="285.24" r="4" fill="#245a73" opacity="0.3"/>
+<text class="tick" x="515.00" y="434" text-anchor="middle">14</text>
+<circle cx="507.00" cy="150.05" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="515.00" cy="290.38" r="4" fill="#245a73" opacity="0.3"/>
+<circle cx="523.00" cy="286.01" r="4" fill="#245a73" opacity="0.3"/>
+<polyline points="105.00,265.15 241.67,300.34 378.33,286.56 515.00,286.01" fill="none" stroke="#245a73" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="105.00" cy="265.15" r="5.5" fill="white" stroke="#245a73" stroke-width="2.5"/>
+<circle cx="241.67" cy="300.34" r="5.5" fill="white" stroke="#245a73" stroke-width="2.5"/>
+<circle cx="378.33" cy="286.56" r="5.5" fill="white" stroke="#245a73" stroke-width="2.5"/>
+<circle cx="515.00" cy="286.01" r="5.5" fill="white" stroke="#245a73" stroke-width="2.5"/>
+<text class="panel-title" x="890.0" y="86" text-anchor="middle">MemTable</text>
+<text class="axis-label" x="890.0" y="450" text-anchor="middle">Size (MiB)</text>
+<line class="grid" x1="685" y1="410.00" x2="1095" y2="410.00"/>
+<text class="tick" x="673" y="415.00" text-anchor="end">165.1</text>
+<line class="grid" x1="685" y1="350.00" x2="1095" y2="350.00"/>
+<text class="tick" x="673" y="355.00" text-anchor="end">178.0</text>
+<line class="grid" x1="685" y1="290.00" x2="1095" y2="290.00"/>
+<text class="tick" x="673" y="295.00" text-anchor="end">191.0</text>
+<line class="grid" x1="685" y1="230.00" x2="1095" y2="230.00"/>
+<text class="tick" x="673" y="235.00" text-anchor="end">203.9</text>
+<line class="grid" x1="685" y1="170.00" x2="1095" y2="170.00"/>
+<text class="tick" x="673" y="175.00" text-anchor="end">216.9</text>
+<line class="grid" x1="685" y1="110.00" x2="1095" y2="110.00"/>
+<text class="tick" x="673" y="115.00" text-anchor="end">229.8</text>
+<line class="axis" x1="685" y1="110" x2="685" y2="410"/>
+<line class="axis" x1="685" y1="410" x2="1095" y2="410"/>
+<text class="tick" x="685.00" y="434" text-anchor="middle">4</text>
+<circle cx="677.00" cy="370.09" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="685.00" cy="301.87" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="693.00" cy="303.89" r="4" fill="#9a4d32" opacity="0.3"/>
+<text class="tick" x="821.67" y="434" text-anchor="middle">8</text>
+<circle cx="813.67" cy="262.33" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="821.67" cy="281.42" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="829.67" cy="313.68" r="4" fill="#9a4d32" opacity="0.3"/>
+<text class="tick" x="958.33" y="434" text-anchor="middle">16</text>
+<circle cx="950.33" cy="309.09" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="958.33" cy="285.29" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="966.33" cy="286.11" r="4" fill="#9a4d32" opacity="0.3"/>
+<text class="tick" x="1095.00" y="434" text-anchor="middle">32</text>
+<circle cx="1087.00" cy="303.92" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="1095.00" cy="263.60" r="4" fill="#9a4d32" opacity="0.3"/>
+<circle cx="1103.00" cy="312.38" r="4" fill="#9a4d32" opacity="0.3"/>
+<polyline points="685.00,303.89 821.67,281.42 958.33,286.11 1095.00,303.92" fill="none" stroke="#9a4d32" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="685.00" cy="303.89" r="5.5" fill="white" stroke="#9a4d32" stroke-width="2.5"/>
+<circle cx="821.67" cy="281.42" r="5.5" fill="white" stroke="#9a4d32" stroke-width="2.5"/>
+<circle cx="958.33" cy="286.11" r="5.5" fill="white" stroke="#9a4d32" stroke-width="2.5"/>
+<circle cx="1095.00" cy="303.92" r="5.5" fill="white" stroke="#9a4d32" stroke-width="2.5"/>
 </svg>

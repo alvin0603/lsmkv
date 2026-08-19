@@ -20,7 +20,7 @@
 <rect width="1600" height="1180" fill="white"/>
 
 <!-- InternalKey -->
-<text class="heading" x="55" y="40">(a) InternalKey</text>
+<text class="heading" x="55" y="40">InternalKey</text>
 <line x1="55" y1="52" x2="1545" y2="52" stroke="#111"/>
 
 <text class="small mono" x="70" y="82">byte 0</text>
@@ -40,7 +40,7 @@
 <text class="text mono" x="70" y="196">"cat", seq=42, kPut: trailer=0x2A01; disk bytes=01 2A 00 00 00 00 00 00</text>
 
 <!-- WAL -->
-<text class="heading" x="55" y="245">(b) WAL record</text>
+<text class="heading" x="55" y="245">WAL record</text>
 <line x1="55" y1="257" x2="1545" y2="257" stroke="#111"/>
 
 <rect class="fixed" x="70" y="285" width="220" height="70"/>
@@ -73,7 +73,7 @@
 <text class="text mono" x="70" y="470">invalid or incomplete record: ftruncate(last_valid_offset)</text>
 
 <!-- SSTable -->
-<text class="heading" x="55" y="520">(c) SSTable file</text>
+<text class="heading" x="55" y="520">SSTable file</text>
 <line x1="55" y1="532" x2="1545" y2="532" stroke="#111"/>
 
 <text class="small mono" x="70" y="562">offset 0</text>
@@ -127,7 +127,7 @@
 <text class="small" x="1100" y="896">All five fields are Fixed64.</text>
 
 <!-- Manifest -->
-<text class="heading" x="55" y="950">(d) Manifest snapshot</text>
+<text class="heading" x="55" y="950">Manifest snapshot</text>
 <line x1="55" y1="962" x2="1545" y2="962" stroke="#111"/>
 
 <rect class="fixed" x="70" y="988" width="180" height="62"/>

@@ -6,15 +6,21 @@ I built `lsmkv` to understand a storage engine below its API. I wanted to follow
 
 ## How it works
 
-![lsmkv architecture](figures/architecture.svg)
+[![Write, flush and compaction](figures/architecture.svg)](figures/architecture.svg)
 
-**WAL and MemTable.** A write lives in both places before it reaches an SSTable, for two different jobs. The WAL is an append-only recovery record. The MemTable holds the same operations in sorted order, which makes point reads cheap and gives the SSTable writer an already sorted input. On restart, valid WAL records rebuild the MemTable.
+### WAL and MemTable
+
+A write lives in both places before it reaches an SSTable, for two different jobs. The WAL is an append-only recovery record. The MemTable holds the same operations in sorted order, which makes point reads cheap and gives the SSTable writer an already sorted input. On restart, valid WAL records rebuild the MemTable.
 
 `put()` assigns a sequence number, appends the encoded operation to the WAL, applies the selected sync policy, and then inserts it into the active MemTable. When the size threshold is reached, the DB creates the next WAL before freezing the old MemTable. The frozen table remains readable until its SSTable has been written and committed through the Manifest.
 
 With the default `kSyncEveryWrite` mode, `put()` returns success only after the WAL `fsync` completes. `kSyncEveryN` and `kSyncOff` reduce sync calls with a weaker crash guarantee.
 
-**SSTables and reads.** An SSTable is written sequentially and never edited in place. New values and deletions stay alongside older versions in other files. A point lookup searches in this order:
+### SSTables and reads
+
+[![Point lookup and ordered iteration](figures/read-path.svg)](figures/read-path.svg)
+
+An SSTable is written sequentially and never edited in place. New values and deletions stay alongside older versions in other files. A point lookup searches in this order:
 
 ```text
 active MemTable
@@ -27,7 +33,9 @@ Each `SSTableReader` loads its sparse index and Bloom filter when it opens. A de
 
 Ordered iteration creates one iterator for every live MemTable and SSTable. `MergingIterator` uses a min-heap to discard older versions of the same user key. `DBIterator` then hides a key when its newest entry is a tombstone.
 
-**Versions and compaction.** The sequence number is stored in the `InternalKey`, so the newest operation for one user key sorts first. A tombstone has to remain as a record because an older put may still live in another immutable file.
+### Versions and compaction
+
+The sequence number is stored in the `InternalKey`, so the newest operation for one user key sorts first. A tombstone has to remain as a record because an older put may still live in another immutable file.
 
 Every flush adds another overlapping L0 file and increases the number of places a read may have to check. When L0 reaches its trigger, `lsmkv` merges all L0 files into one new L1 SSTable. It keeps the newest entry among those L0 inputs and retains tombstones. Existing L1 files do not join this merge, so their key ranges may overlap. The new L1 file is committed in the Manifest before the old L0 files are removed.
 
@@ -62,7 +70,7 @@ g++ -std=c++20 -Iinclude demo.cpp build/liblsmkv.a -o demo
 
 ## Bytes on disk
 
-![InternalKey, WAL, SSTable and Manifest layouts](figures/storage-format.svg)
+[![InternalKey, WAL, SSTable and Manifest layouts](figures/storage-format.svg)](figures/storage-format.svg)
 
 Fixed32 and Fixed64 fields use little-endian encoding. Key and value lengths use Varint32. An `InternalKey` is encoded as:
 
@@ -135,7 +143,7 @@ lsmkv/
 
 ### Dividing a 64 MiB allocation budget
 
-This experiment sets a 64 MiB accounted budget across the MemTable flush threshold, Bloom bit arrays, and block-cache capacity. Process RSS, container metadata and the kernel page cache are outside this accounting. The run uses 500,000 preloaded keys with 256-byte values, 50,000 warmup operations, and 500,000 measured operations. The workload is 95% reads, 4% writes and 1% deletes with a Zipfian distribution (`theta = 0.99`), `kSyncOff`, and three runs per configuration. Faded points are individual runs; the line is their median.
+This experiment sets a 64 MiB accounted budget across the MemTable flush threshold, Bloom bit arrays, and block-cache capacity. Process RSS, container metadata and the kernel page cache are outside this accounting. The run uses 500,000 preloaded keys with 256-byte values, 50,000 warmup operations, and 500,000 measured operations. The workload is 95% reads, 4% writes and 1% deletes with a Zipfian distribution (`theta = 0.99`), `kSyncOff`, and three runs per configuration.
 
 ![Read p99 latency](figures/p99.svg)
 
@@ -143,11 +151,11 @@ This experiment sets a 64 MiB accounted budget across the MemTable flush thresho
 
 ![Block cache hit rate](figures/cache.svg)
 
-At 2 Bloom bits per key, read p99 is 196.3 µs and throughput is 62.1k ops/s. At 6 bits, they improve to 188.8 µs and 72.9k ops/s. Results from 6 to 14 bits stay close, so the Bloom benefit is already near its plateau for this workload.
+What matters here is the tradeoff created by the 64 MiB cap. The Bloom filter, MemTable and block cache share the same pool, so giving more memory to either of the first two leaves less room for cached data blocks.
 
-For the MemTable, throughput rises from 67.1k ops/s at 4 MiB to 77.0k at 16 MiB, then reaches 77.7k at 32 MiB. Block-cache hit rate falls from 81.5% to 65.8% over the same settings. The 32 MiB setting does not raise p99 in these runs, so the cache pressure is visible in hit rate without a latency reversal yet.
+A small Bloom filter produces enough false positives to send many absent keys into the SSTable read path. Giving it more bits removes most of that wasted I/O, but the benefit soon flattens while the block cache keeps getting smaller. A larger MemTable has a similar tension. It batches more keys into each flush, which means fewer SSTables and less compaction I/O, then its throughput benefit levels off as cache pressure grows. The p99 and throughput curves are both showing these two effects pulling against each other.
 
-The Bloom-filter cache result is easy to misread. A more accurate filter prevents many cache lookups from happening: hits fall from about 388k to 167k, while misses stay near 56k. The lower hit rate mostly reflects a different lookup stream.
+The cache-hit graph has one trap. A stronger Bloom filter stops many negative reads before they ask the cache, so the remaining lookup stream is harder. Its hit rate can fall because the cache is smaller and because those easy negative lookups disappeared. I read it alongside p99 and throughput instead of treating hit rate alone as the answer.
 
 ```bash
 python3 bench/memory.py
