@@ -37,6 +37,7 @@ namespace lsmkv
             std::size_t capacity() const;
             std::size_t currentSize() const;
             std::size_t entryCount() const;
+            void setCapacity(std::size_t capacity);
             std::uint64_t hitCount() const;
             std::uint64_t missCount() const;
             double hitRate() const;

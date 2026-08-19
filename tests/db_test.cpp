@@ -70,6 +70,22 @@ TEST_CASE("DB reports compaction bytes", "[db][metrics]")
     std::filesystem::remove_all(path);
 }
 
+TEST_CASE("DB exposes its configured cache and Bloom memory", "[db][metrics]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_memory_metrics_test";
+    std::filesystem::remove_all(path);
+    auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncOff, 1, 1024, 4, 32, 2, 1);
+    REQUIRE(db != nullptr);
+    REQUIRE(db->blockCacheCapacity() == 32);
+    REQUIRE(db->put("apple", "red"));
+    REQUIRE(db->flush());
+    REQUIRE(db->bloomMemoryUsage() == 8);
+    db->setBlockCacheCapacity(16);
+    REQUIRE(db->blockCacheCapacity() == 16);
+    db->close();
+    std::filesystem::remove_all(path);
+}
+
 TEST_CASE("DB recovers values and sequence numbers from WAL", "[db]")
 {
     const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_recovery_test";

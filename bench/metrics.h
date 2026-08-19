@@ -38,6 +38,13 @@ namespace lsmkv::bench
         std::size_t max_value_size = 0;
         std::string sync_mode;
         std::size_t sync_interval = 0;
+        std::uint64_t memory_budget_bytes = 0;
+        std::uint64_t memtable_size_bytes = 0;
+        std::uint64_t block_cache_capacity_bytes = 0;
+        std::uint64_t bloom_bits_per_key = 0;
+        std::uint32_t bloom_hash_count = 0;
+        std::uint64_t bloom_memory_bytes = 0;
+        std::uint64_t total_memory_bytes = 0;
         std::uint64_t read_count = 0;
         std::uint64_t write_count = 0;
         std::uint64_t delete_count = 0;

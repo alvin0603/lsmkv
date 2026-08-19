@@ -2,18 +2,22 @@
 #include "metrics.h"
 #include <lsmkv/db.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cerrno>
 #include <charconv>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <fcntl.h>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unistd.h>
 
 namespace
 {
@@ -28,9 +32,15 @@ namespace
         lsmkv::SyncMode sync_mode = lsmkv::SyncMode::kSyncOff;
         std::size_t sync_interval = 1;
         std::uint64_t warmup_operation_count = 0;
+        std::size_t memory_budget = 0;
+        std::size_t memtable_size = lsmkv::kDefaultMemTableSize;
+        std::size_t block_cache_size = lsmkv::kDefaultBlockCacheCapacity;
+        std::size_t bloom_bits_per_key = lsmkv::kDefaultBloomBitsPerKey;
+        std::uint32_t bloom_hashes = 0;
         std::string db_path;
         std::string output_path;
         OutputFormat output_format = OutputFormat::kCsv;
+        bool drop_page_cache = false;
         bool show_help = false;
     };
     template<typename T>
@@ -75,6 +85,12 @@ namespace
         std::cout << "  --sync-mode <off|every-write|every-n>\n";
         std::cout << "  --sync-interval <count>\n";
         std::cout << "  --warmup-operations <count>\n";
+        std::cout << "  --memory-budget <bytes>\n";
+        std::cout << "  --memtable-size <bytes>\n";
+        std::cout << "  --block-cache-size <bytes>\n";
+        std::cout << "  --bloom-bits-per-key <count>\n";
+        std::cout << "  --bloom-hashes <count>\n";
+        std::cout << "  --drop-page-cache\n";
         std::cout << "  --output <path>\n";
         std::cout << "  --format <csv|json>\n";
     }
@@ -86,6 +102,11 @@ namespace
             if(argument == "--help")
             {
                 options.show_help = true;
+                continue;
+            }
+            if(argument == "--drop-page-cache")
+            {
+                options.drop_page_cache = true;
                 continue;
             }
             if(i + 1 >= argc)
@@ -181,6 +202,31 @@ namespace
                 if(!parseUnsigned(value, options.warmup_operation_count))
                     return false;
             }
+            else if(argument == "--memory-budget")
+            {
+                if(!parseUnsigned(value, options.memory_budget))
+                    return false;
+            }
+            else if(argument == "--memtable-size")
+            {
+                if(!parseUnsigned(value, options.memtable_size))
+                    return false;
+            }
+            else if(argument == "--block-cache-size")
+            {
+                if(!parseUnsigned(value, options.block_cache_size))
+                    return false;
+            }
+            else if(argument == "--bloom-bits-per-key")
+            {
+                if(!parseUnsigned(value, options.bloom_bits_per_key))
+                    return false;
+            }
+            else if(argument == "--bloom-hashes")
+            {
+                if(!parseUnsigned(value, options.bloom_hashes))
+                    return false;
+            }
             else if(argument == "--output")
                 options.output_path = value;
             else if(argument == "--format")
@@ -206,6 +252,14 @@ namespace
             return false;
         }
         return true;
+    }
+    std::uint32_t bloomHashCount(std::size_t bits_per_key)
+    {
+        if(bits_per_key >= 44)
+            return lsmkv::kMaxBloomHashCount;
+        const double optimal_hash_count = static_cast<double>(bits_per_key) * std::log(2.0);
+        const auto rounded_hash_count = static_cast<std::uint32_t>(std::lround(optimal_hash_count));
+        return std::clamp<std::uint32_t>(rounded_hash_count, 1, lsmkv::kMaxBloomHashCount);
     }
     std::string keyDistributionName(lsmkv::bench::KeyDistribution distribution)
     {
@@ -252,6 +306,28 @@ namespace
         size = total_size;
         return true;
     }
+    bool dropSSTablePageCache(const std::filesystem::path& directory)
+    {
+        std::error_code error;
+        std::filesystem::directory_iterator it(directory, error);
+        std::filesystem::directory_iterator end;
+        while(!error && it != end)
+        {
+            const std::filesystem::path path = it->path();
+            it.increment(error);
+            if(path.extension() != ".sst")
+                continue;
+            const std::string path_string = path.string();
+            const int fd = ::open(path_string.c_str(), O_RDONLY);
+            if(fd == -1)
+                return false;
+            const int result = ::posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED);
+            ::close(fd);
+            if(result != 0)
+                return false;
+        }
+        return !error;
+    }
 }
 
 int main(int argc, char* argv[])
@@ -272,6 +348,18 @@ int main(int argc, char* argv[])
         std::cerr << "operation count is too large\n";
         return 1;
     }
+    if(options.bloom_bits_per_key == 0 || options.memtable_size == 0)
+    {
+        std::cerr << "invalid memory configuration\n";
+        return 1;
+    }
+    if(options.bloom_hashes == 0)
+        options.bloom_hashes = bloomHashCount(options.bloom_bits_per_key);
+    if(options.bloom_hashes > lsmkv::kMaxBloomHashCount)
+    {
+        std::cerr << "invalid bloom hash count\n";
+        return 1;
+    }
     lsmkv::bench::WorkloadConfig generator_config = options.workload;
     generator_config.operation_count += options.warmup_operation_count;
     lsmkv::bench::WorkloadGenerator generator(generator_config);
@@ -287,7 +375,8 @@ int main(int argc, char* argv[])
         std::cerr << "database path already exists or cannot be checked\n";
         return 1;
     }
-    auto db = lsmkv::DB::open(db_path.string(), options.sync_mode, options.sync_interval);
+    const std::size_t initial_cache_size = options.memory_budget == 0 ? options.block_cache_size : 0;
+    auto db = lsmkv::DB::open(db_path.string(), options.sync_mode, options.sync_interval, options.memtable_size, lsmkv::kDefaultL0CompactionTrigger, initial_cache_size, options.bloom_bits_per_key, options.bloom_hashes);
     if(!db)
     {
         std::cerr << "failed to open database\n";
@@ -309,6 +398,28 @@ int main(int argc, char* argv[])
     {
         std::cerr << "failed to flush preload data\n";
         return 1;
+    }
+    if(options.memory_budget != 0)
+    {
+        const std::size_t bloom_memory = db->bloomMemoryUsage();
+        if(options.memtable_size > options.memory_budget || bloom_memory > options.memory_budget - options.memtable_size)
+        {
+            std::cerr << "memory budget is too small\n";
+            return 1;
+        }
+        options.block_cache_size = options.memory_budget - options.memtable_size - bloom_memory;
+        db->setBlockCacheCapacity(options.block_cache_size);
+    }
+    if(options.drop_page_cache)
+    {
+        const std::size_t cache_capacity = db->blockCacheCapacity();
+        db->setBlockCacheCapacity(0);
+        db->setBlockCacheCapacity(cache_capacity);
+        if(!dropSSTablePageCache(db_path))
+        {
+            std::cerr << "failed to drop SSTable page cache\n";
+            return 1;
+        }
     }
     lsmkv::bench::Operation operation;
     std::string value;
@@ -345,6 +456,18 @@ int main(int argc, char* argv[])
         std::cerr << "failed to flush warmup data\n";
         return 1;
     }
+    if(options.memory_budget != 0)
+    {
+        const std::size_t bloom_memory = db->bloomMemoryUsage();
+        if(options.memtable_size > options.memory_budget || bloom_memory > options.memory_budget - options.memtable_size)
+        {
+            std::cerr << "memory budget is too small after warmup\n";
+            return 1;
+        }
+        options.block_cache_size = options.memory_budget - options.memtable_size - bloom_memory;
+        db->setBlockCacheCapacity(options.block_cache_size);
+    }
+    const std::size_t bloom_memory = db->bloomMemoryUsage();
     const lsmkv::DBStats stats_before = db->stats();
     std::uint64_t read_count = 0;
     std::uint64_t write_count = 0;
@@ -435,6 +558,13 @@ int main(int argc, char* argv[])
     result.max_value_size = options.workload.max_value_size;
     result.sync_mode = syncModeName(options.sync_mode);
     result.sync_interval = options.sync_interval;
+    result.memory_budget_bytes = options.memory_budget;
+    result.memtable_size_bytes = options.memtable_size;
+    result.block_cache_capacity_bytes = db->blockCacheCapacity();
+    result.bloom_bits_per_key = options.bloom_bits_per_key;
+    result.bloom_hash_count = options.bloom_hashes;
+    result.bloom_memory_bytes = bloom_memory;
+    result.total_memory_bytes = result.memtable_size_bytes + result.block_cache_capacity_bytes + result.bloom_memory_bytes;
     result.read_count = read_count;
     result.write_count = write_count;
     result.delete_count = delete_count;
@@ -478,5 +608,6 @@ int main(int argc, char* argv[])
     std::cout << "write amplification: " << result.write_amplification << '\n';
     std::cout << "space amplification: " << result.space_amplification << '\n';
     std::cout << "cache hit rate: " << result.cache_hit_rate << '\n';
+    std::cout << "memory: " << result.total_memory_bytes << " bytes\n";
     return 0;
 }

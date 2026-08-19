@@ -31,7 +31,7 @@ namespace lsmkv
     class DB
     {
         public:
-            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize, std::size_t l0_compaction_trigger = kDefaultL0CompactionTrigger, std::size_t block_cache_capacity = kDefaultBlockCacheCapacity);
+            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize, std::size_t l0_compaction_trigger = kDefaultL0CompactionTrigger, std::size_t block_cache_capacity = kDefaultBlockCacheCapacity, std::size_t bloom_bits_per_key = kDefaultBloomBitsPerKey, std::uint32_t bloom_num_hashes = kDefaultBloomHashCount);
             ~DB();
             DB(const DB&) = delete;
             DB& operator=(const DB&) = delete;
@@ -45,6 +45,9 @@ namespace lsmkv
             std::uint64_t blockCacheHitCount() const;
             std::uint64_t blockCacheMissCount() const;
             double blockCacheHitRate() const;
+            std::size_t blockCacheCapacity() const;
+            void setBlockCacheCapacity(std::size_t capacity);
+            std::size_t bloomMemoryUsage() const;
             DBStats stats() const;
         private:
             struct OpenedTable
@@ -66,6 +69,8 @@ namespace lsmkv
             std::size_t memtable_flush_size_ = kDefaultMemTableSize;
             std::size_t l0_compaction_trigger_ = kDefaultL0CompactionTrigger;
             std::shared_ptr<BlockCache> block_cache_;
+            std::size_t bloom_bits_per_key_ = kDefaultBloomBitsPerKey;
+            std::uint32_t bloom_num_hashes_ = kDefaultBloomHashCount;
             DBStats stats_;
             int lock_fd_ = -1;
             bool open_ = false;

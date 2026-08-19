@@ -51,6 +51,8 @@ TEST_CASE("Metrics write CSV and JSON results", "[metrics]")
     result.operation_count = 1000;
     result.key_distribution = "zipfian";
     result.sync_mode = "off";
+    result.memory_budget_bytes = 64 * 1024 * 1024;
+    result.total_memory_bytes = 64 * 1024 * 1024;
     result.read_latency.p99_ns = 81;
     result.write_amplification = 4.0;
     REQUIRE(lsmkv::bench::writeCsv(csv_path.string(), result));
@@ -66,6 +68,7 @@ TEST_CASE("Metrics write CSV and JSON results", "[metrics]")
     REQUIRE(csv.find("seed,operations") == 0);
     REQUIRE(csv.find("42,1000") != std::string::npos);
     REQUIRE(json.find("\"seed\": 42") != std::string::npos);
+    REQUIRE(json.find("\"memory_budget_bytes\": 67108864") != std::string::npos);
     REQUIRE(json.find("\"read_p99_ns\": 81") != std::string::npos);
     std::filesystem::remove(csv_path);
     std::filesystem::remove(json_path);

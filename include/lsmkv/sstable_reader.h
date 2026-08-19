@@ -25,6 +25,7 @@ namespace lsmkv
             LookupResult get(std::string_view user_key, std::string& value) const;
             SSTableIterator newIterator() const;
             std::uint64_t dataBlockReadCount() const;
+            std::size_t bloomMemoryUsage() const;
         private:
             struct IndexEntry
             {

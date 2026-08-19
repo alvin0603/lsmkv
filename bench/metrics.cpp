@@ -18,7 +18,7 @@ namespace
     }
     void writeCsvHeader(std::ostream& output)
     {
-        output << "seed,operations,warmup_operations,keys,read_percent,write_percent,delete_percent,key_distribution,zipf_theta,min_value_size,max_value_size,sync_mode,sync_interval,reads,writes,deletes,elapsed_ns,throughput_ops_per_second,read_p50_ns,read_p99_ns,read_p999_ns,write_p50_ns,write_p99_ns,write_p999_ns,delete_p50_ns,delete_p99_ns,delete_p999_ns,wal_bytes_written,sstable_bytes_written,user_bytes_written,write_amplification,live_data_bytes,sstable_size_bytes,space_amplification,cache_hits,cache_misses,cache_hit_rate,compaction_count,compaction_bytes_read,compaction_bytes_written\n";
+        output << "seed,operations,warmup_operations,keys,read_percent,write_percent,delete_percent,key_distribution,zipf_theta,min_value_size,max_value_size,sync_mode,sync_interval,memory_budget_bytes,memtable_size_bytes,block_cache_capacity_bytes,bloom_bits_per_key,bloom_hash_count,bloom_memory_bytes,total_memory_bytes,reads,writes,deletes,elapsed_ns,throughput_ops_per_second,read_p50_ns,read_p99_ns,read_p999_ns,write_p50_ns,write_p99_ns,write_p999_ns,delete_p50_ns,delete_p99_ns,delete_p999_ns,wal_bytes_written,sstable_bytes_written,user_bytes_written,write_amplification,live_data_bytes,sstable_size_bytes,space_amplification,cache_hits,cache_misses,cache_hit_rate,compaction_count,compaction_bytes_read,compaction_bytes_written\n";
     }
 }
 
@@ -72,6 +72,8 @@ namespace lsmkv::bench
                << result.seed << ',' << result.operation_count << ',' << result.warmup_operation_count << ',' << result.key_count << ','
                << result.read_percent << ',' << result.write_percent << ',' << result.delete_percent << ',' << result.key_distribution << ','
                << result.zipf_theta << ',' << result.min_value_size << ',' << result.max_value_size << ',' << result.sync_mode << ',' << result.sync_interval << ','
+               << result.memory_budget_bytes << ',' << result.memtable_size_bytes << ',' << result.block_cache_capacity_bytes << ',' << result.bloom_bits_per_key << ','
+               << result.bloom_hash_count << ',' << result.bloom_memory_bytes << ',' << result.total_memory_bytes << ','
                << result.read_count << ',' << result.write_count << ',' << result.delete_count << ',' << result.elapsed_ns << ',' << result.throughput_ops_per_second << ','
                << result.read_latency.p50_ns << ',' << result.read_latency.p99_ns << ',' << result.read_latency.p999_ns << ','
                << result.write_latency.p50_ns << ',' << result.write_latency.p99_ns << ',' << result.write_latency.p999_ns << ','
@@ -103,6 +105,13 @@ namespace lsmkv::bench
                << "    \"max_value_size\": " << result.max_value_size << ",\n"
                << "    \"sync_mode\": \"" << result.sync_mode << "\",\n"
                << "    \"sync_interval\": " << result.sync_interval << ",\n"
+               << "    \"memory_budget_bytes\": " << result.memory_budget_bytes << ",\n"
+               << "    \"memtable_size_bytes\": " << result.memtable_size_bytes << ",\n"
+               << "    \"block_cache_capacity_bytes\": " << result.block_cache_capacity_bytes << ",\n"
+               << "    \"bloom_bits_per_key\": " << result.bloom_bits_per_key << ",\n"
+               << "    \"bloom_hash_count\": " << result.bloom_hash_count << ",\n"
+               << "    \"bloom_memory_bytes\": " << result.bloom_memory_bytes << ",\n"
+               << "    \"total_memory_bytes\": " << result.total_memory_bytes << ",\n"
                << "    \"reads\": " << result.read_count << ",\n"
                << "    \"writes\": " << result.write_count << ",\n"
                << "    \"deletes\": " << result.delete_count << ",\n"

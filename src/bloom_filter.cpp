@@ -99,6 +99,10 @@ namespace lsmkv
         }
         return true;
     }
+    std::size_t BloomFilter::memoryUsage() const
+    {
+        return bits_.size();
+    }
     bool BloomFilter::encode(std::string& output) const
     {
         if(!finished_)

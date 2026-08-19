@@ -67,6 +67,24 @@ namespace lsmkv
             return 0.0;
         return block_cache_->hitRate();
     }
+    std::size_t DB::blockCacheCapacity() const
+    {
+        if(!block_cache_)
+            return 0;
+        return block_cache_->capacity();
+    }
+    void DB::setBlockCacheCapacity(std::size_t capacity)
+    {
+        if(block_cache_)
+            block_cache_->setCapacity(capacity);
+    }
+    std::size_t DB::bloomMemoryUsage() const
+    {
+        std::size_t memory_usage = 0;
+        for(const OpenedTable& table : opened_tables_)
+            memory_usage += table.reader->bloomMemoryUsage();
+        return memory_usage;
+    }
     DBStats DB::stats() const
     {
         DBStats result = stats_;
@@ -80,10 +98,10 @@ namespace lsmkv
             return nullptr;
         return std::unique_ptr<DBIterator>(new DBIterator(this));
     }
-    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size, std::size_t l0_compaction_trigger, std::size_t block_cache_capacity)
+    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size, std::size_t l0_compaction_trigger, std::size_t block_cache_capacity, std::size_t bloom_bits_per_key, std::uint32_t bloom_num_hashes)
     {
         auto db = std::unique_ptr<DB>(new DB());
-        if(memtable_flush_size == 0 || l0_compaction_trigger == 0)
+        if(memtable_flush_size == 0 || l0_compaction_trigger == 0 || bloom_bits_per_key == 0 || bloom_num_hashes == 0 || bloom_num_hashes > kMaxBloomHashCount)
             return nullptr;
         db->directory_ = std::string(path);
         db->sync_mode_ = sync_mode;
@@ -91,6 +109,8 @@ namespace lsmkv
         db->memtable_flush_size_ = memtable_flush_size;
         db->l0_compaction_trigger_ = l0_compaction_trigger;
         db->block_cache_ = std::make_shared<BlockCache>(block_cache_capacity);
+        db->bloom_bits_per_key_ = bloom_bits_per_key;
+        db->bloom_num_hashes_ = bloom_num_hashes;
         const std::filesystem::path directory{std::string(path)};
         std::error_code error;
         std::filesystem::create_directories(directory, error);
@@ -304,7 +324,7 @@ namespace lsmkv
         const std::filesystem::path table_path = sstableFilePath(std::filesystem::path(directory_), table_id);
         bool table_written = false;
         {
-            SSTableWriter writer(table_path.string());
+            SSTableWriter writer(table_path.string(), kDefaultDataBlockSize, bloom_bits_per_key_, bloom_num_hashes_);
             if(writer.isOpen())
             {
                 table_written = true;
@@ -388,7 +408,7 @@ namespace lsmkv
 
         // merge
         CompactionOutput output;
-        if(!writeCompactedTable(output_path.string(), readers, output))
+        if(!writeCompactedTable(output_path.string(), readers, output, bloom_bits_per_key_, bloom_num_hashes_))
         {
             std::error_code remove_error;
             std::filesystem::remove(output_path, remove_error);

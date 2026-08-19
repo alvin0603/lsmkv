@@ -7,7 +7,7 @@
 
 namespace lsmkv
 {
-    bool writeCompactedTable(std::string_view output_path, const std::vector<const SSTableReader*>& readers, CompactionOutput& output)
+    bool writeCompactedTable(std::string_view output_path, const std::vector<const SSTableReader*>& readers, CompactionOutput& output, std::size_t bloom_bits_per_key, std::uint32_t bloom_num_hashes)
     {
         if(readers.empty())
             return false;
@@ -21,7 +21,7 @@ namespace lsmkv
         iterator.initialize();
         if(!iterator.ok())
             return false;
-        SSTableWriter writer(output_path);
+        SSTableWriter writer(output_path, kDefaultDataBlockSize, bloom_bits_per_key, bloom_num_hashes);
         if(!writer.isOpen())
             return false;
         CompactionOutput compacted;

@@ -23,6 +23,7 @@ namespace lsmkv
             bool mayContain(std::string_view user_key) const;
             bool encode(std::string& output) const;
             bool decode(std::string_view input);
+            std::size_t memoryUsage() const;
         private:
             struct HashPair
             {

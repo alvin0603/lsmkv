@@ -79,6 +79,11 @@ namespace lsmkv
     {
         return entries_.size();
     }
+    void BlockCache::setCapacity(std::size_t capacity)
+    {
+        capacity_ = capacity;
+        evict();
+    }
     std::uint64_t BlockCache::hitCount() const
     {
         return hit_count_;

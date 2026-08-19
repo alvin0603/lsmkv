@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180">
+<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#111"/>
+    </marker>
+</defs>
+<style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #111; }
+    .mono { font-family: Consolas, "Liberation Mono", monospace; }
+    .heading { font-size: 20px; font-weight: 700; }
+    .label { font-size: 15px; font-weight: 700; }
+    .text { font-size: 14px; }
+    .small { font-size: 12px; }
+    .field { fill: white; stroke: #111; stroke-width: 1.5; }
+    .fixed { fill: #e5e5e5; stroke: #111; stroke-width: 1.5; }
+    .var { fill: white; stroke: #111; stroke-width: 1.5; stroke-dasharray: 6 3; }
+    .line { fill: none; stroke: #111; stroke-width: 1.5; marker-end: url(#arrow); }
+</style>
+
+<rect width="1600" height="1180" fill="white"/>
+
+<!-- InternalKey -->
+<text class="heading" x="55" y="40">(a) InternalKey</text>
+<line x1="55" y1="52" x2="1545" y2="52" stroke="#111"/>
+
+<text class="small mono" x="70" y="82">byte 0</text>
+<text class="small mono" x="915" y="82" text-anchor="end">N - 1</text>
+<text class="small mono" x="930" y="82">N</text>
+<text class="small mono" x="1270" y="82" text-anchor="end">N + 7</text>
+<rect class="field" x="70" y="92" width="850" height="72"/>
+<rect class="fixed" x="920" y="92" width="350" height="72"/>
+<text class="label mono" x="495" y="123" text-anchor="middle">user_key</text>
+<text class="small" x="495" y="146" text-anchor="middle">N bytes</text>
+<text class="label mono" x="1095" y="123" text-anchor="middle">trailer</text>
+<text class="small" x="1095" y="146" text-anchor="middle">Fixed64, little-endian</text>
+
+<text class="text mono" x="1320" y="105">trailer = (sequence &lt;&lt; 8) | type</text>
+<text class="text mono" x="1320" y="132">type: kDelete=0, kPut=1</text>
+<text class="text mono" x="1320" y="159">sort: user_key ASC, trailer DESC</text>
+<text class="text mono" x="70" y="196">"cat", seq=42, kPut: trailer=0x2A01; disk bytes=01 2A 00 00 00 00 00 00</text>
+
+<!-- WAL -->
+<text class="heading" x="55" y="245">(b) WAL record</text>
+<line x1="55" y1="257" x2="1545" y2="257" stroke="#111"/>
+
+<rect class="fixed" x="70" y="285" width="220" height="70"/>
+<rect class="fixed" x="290" y="285" width="240" height="70"/>
+<rect class="field" x="530" y="285" width="1000" height="70"/>
+<text class="label mono" x="180" y="316" text-anchor="middle">crc32</text>
+<text class="small" x="180" y="338" text-anchor="middle">Fixed32, 4 bytes</text>
+<text class="label mono" x="410" y="316" text-anchor="middle">payload_size</text>
+<text class="small" x="410" y="338" text-anchor="middle">Fixed32, 4 bytes</text>
+<text class="label mono" x="1030" y="316" text-anchor="middle">payload[payload_size]</text>
+<text class="small" x="1030" y="338" text-anchor="middle">CRC coverage</text>
+
+<text class="text mono" x="70" y="402">payload:</text>
+<rect class="fixed" x="185" y="375" width="130" height="62"/>
+<rect class="fixed" x="315" y="375" width="200" height="62"/>
+<rect class="var" x="515" y="375" width="180" height="62"/>
+<rect class="field" x="695" y="375" width="210" height="62"/>
+<rect class="var" x="905" y="375" width="190" height="62"/>
+<rect class="field" x="1095" y="375" width="260" height="62"/>
+<text class="label mono" x="250" y="403" text-anchor="middle">type</text>
+<text class="small" x="250" y="423" text-anchor="middle">1 byte</text>
+<text class="label mono" x="415" y="403" text-anchor="middle">sequence</text>
+<text class="small" x="415" y="423" text-anchor="middle">Fixed64</text>
+<text class="label mono" x="605" y="403" text-anchor="middle">key_size</text>
+<text class="small" x="605" y="423" text-anchor="middle">Varint32</text>
+<text class="label mono" x="800" y="413" text-anchor="middle">user_key</text>
+<text class="label mono" x="1000" y="403" text-anchor="middle">value_size</text>
+<text class="small" x="1000" y="423" text-anchor="middle">Varint32</text>
+<text class="label mono" x="1225" y="413" text-anchor="middle">value</text>
+<text class="text mono" x="70" y="470">invalid or incomplete record: ftruncate(last_valid_offset)</text>
+
+<!-- SSTable -->
+<text class="heading" x="55" y="520">(c) SSTable file</text>
+<line x1="55" y1="532" x2="1545" y2="532" stroke="#111"/>
+
+<text class="small mono" x="70" y="562">offset 0</text>
+<rect class="field" x="70" y="575" width="250" height="78"/>
+<rect class="field" x="320" y="575" width="250" height="78"/>
+<rect class="field" x="570" y="575" width="130" height="78"/>
+<rect class="var" x="700" y="575" width="290" height="78"/>
+<rect class="field" x="990" y="575" width="290" height="78"/>
+<rect class="fixed" x="1280" y="575" width="250" height="78"/>
+<text class="label mono" x="195" y="607" text-anchor="middle">data block 0</text>
+<text class="small" x="195" y="630" text-anchor="middle">target about 4 KiB</text>
+<text class="label mono" x="445" y="607" text-anchor="middle">data block 1</text>
+<text class="small" x="445" y="630" text-anchor="middle">sorted entries</text>
+<text class="label mono" x="635" y="617" text-anchor="middle">...</text>
+<text class="label mono" x="845" y="607" text-anchor="middle">sparse index</text>
+<text class="small" x="845" y="630" text-anchor="middle">one entry per data block</text>
+<text class="label mono" x="1135" y="607" text-anchor="middle">Bloom block</text>
+<text class="small" x="1135" y="630" text-anchor="middle">all user keys</text>
+<text class="label mono" x="1405" y="607" text-anchor="middle">footer</text>
+<text class="small" x="1405" y="630" text-anchor="middle">40 bytes</text>
+<path class="line" d="M 1515 552 L 1445 552 L 1445 575"/>
+<text class="small mono" x="1515" y="546" text-anchor="end">reader starts at file_size - 40</text>
+
+<text class="label" x="70" y="704">data entry</text>
+<rect class="var" x="70" y="718" width="210" height="58"/>
+<rect class="field" x="280" y="718" width="260" height="58"/>
+<rect class="var" x="540" y="718" width="210" height="58"/>
+<rect class="field" x="750" y="718" width="250" height="58"/>
+<text class="small mono" x="175" y="751" text-anchor="middle">key_size</text>
+<text class="small mono" x="410" y="751" text-anchor="middle">InternalKey</text>
+<text class="small mono" x="645" y="751" text-anchor="middle">value_size</text>
+<text class="small mono" x="875" y="751" text-anchor="middle">value</text>
+<text class="label" x="70" y="820">index entry</text>
+<rect class="var" x="70" y="834" width="210" height="58"/>
+<rect class="field" x="280" y="834" width="310" height="58"/>
+<rect class="fixed" x="590" y="834" width="230" height="58"/>
+<rect class="fixed" x="820" y="834" width="230" height="58"/>
+<text class="small mono" x="175" y="867" text-anchor="middle">last_key_size</text>
+<text class="small mono" x="435" y="867" text-anchor="middle">last InternalKey</text>
+<text class="small mono" x="705" y="867" text-anchor="middle">block_offset</text>
+<text class="small mono" x="935" y="867" text-anchor="middle">block_size</text>
+
+<text class="label" x="1100" y="704">Bloom block</text>
+<text class="text mono" x="1100" y="734">Fixed32 num_hashes</text>
+<text class="text mono" x="1100" y="758">Fixed64 num_bits</text>
+<text class="text mono" x="1100" y="782">bit_array[ceil(num_bits / 8)]</text>
+
+<text class="label" x="1100" y="820">footer</text>
+<text class="text mono" x="1100" y="850">index_offset | index_size</text>
+<text class="text mono" x="1100" y="874">bloom_offset | bloom_size | magic</text>
+<text class="small" x="1100" y="896">All five fields are Fixed64.</text>
+
+<!-- Manifest -->
+<text class="heading" x="55" y="950">(d) Manifest snapshot</text>
+<line x1="55" y1="962" x2="1545" y2="962" stroke="#111"/>
+
+<rect class="fixed" x="70" y="988" width="180" height="62"/>
+<rect class="fixed" x="250" y="988" width="220" height="62"/>
+<rect class="fixed" x="470" y="988" width="220" height="62"/>
+<rect class="fixed" x="690" y="988" width="250" height="62"/>
+<rect class="fixed" x="940" y="988" width="190" height="62"/>
+<rect class="field" x="1130" y="988" width="400" height="62"/>
+<text class="small mono" x="160" y="1024" text-anchor="middle">magic:8</text>
+<text class="small mono" x="360" y="1024" text-anchor="middle">next_file_id:8</text>
+<text class="small mono" x="580" y="1024" text-anchor="middle">last_sequence:8</text>
+<text class="small mono" x="815" y="1024" text-anchor="middle">durable_wal_epoch:8</text>
+<text class="small mono" x="1035" y="1024" text-anchor="middle">table_count:4</text>
+<text class="small mono" x="1330" y="1024" text-anchor="middle">table entries...</text>
+
+<text class="label" x="70" y="1093">table entry</text>
+<rect class="fixed" x="180" y="1067" width="170" height="58"/>
+<rect class="fixed" x="350" y="1067" width="140" height="58"/>
+<rect class="fixed" x="490" y="1067" width="190" height="58"/>
+<rect class="var" x="680" y="1067" width="360" height="58"/>
+<rect class="var" x="1040" y="1067" width="360" height="58"/>
+<text class="small mono" x="265" y="1100" text-anchor="middle">file_id:8</text>
+<text class="small mono" x="420" y="1100" text-anchor="middle">level:4</text>
+<text class="small mono" x="585" y="1100" text-anchor="middle">file_size:8</text>
+<text class="small mono" x="860" y="1100" text-anchor="middle">smallest InternalKey: length + bytes</text>
+<text class="small mono" x="1220" y="1100" text-anchor="middle">largest InternalKey: length + bytes</text>
+
+<rect class="fixed" x="70" y="1146" width="18" height="18"/>
+<text class="small" x="98" y="1160">fixed-width field</text>
+<rect class="var" x="250" y="1146" width="18" height="18"/>
+<text class="small" x="278" y="1160">Varint length or variable-size field</text>
+<rect class="field" x="555" y="1146" width="18" height="18"/>
+<text class="small" x="583" y="1160">raw bytes or repeated entries</text>
+</svg>

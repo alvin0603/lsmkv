@@ -104,6 +104,12 @@ namespace lsmkv
     {
         return data_block_read_count_;
     }
+    std::size_t SSTableReader::bloomMemoryUsage() const
+    {
+        if(!has_bloom_filter_)
+            return 0;
+        return bloom_filter_.memoryUsage();
+    }
     SSTableIterator SSTableReader::newIterator() const
     {
         return SSTableIterator(this);

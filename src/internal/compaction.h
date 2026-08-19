@@ -13,5 +13,5 @@ namespace lsmkv
         std::string smallest_key;
         std::string largest_key;
     };
-    bool writeCompactedTable(std::string_view output_path, const std::vector<const SSTableReader*>& readers, CompactionOutput& output);
+    bool writeCompactedTable(std::string_view output_path, const std::vector<const SSTableReader*>& readers, CompactionOutput& output, std::size_t bloom_bits_per_key = kDefaultBloomBitsPerKey, std::uint32_t bloom_num_hashes = kDefaultBloomHashCount);
 }

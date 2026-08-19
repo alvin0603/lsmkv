@@ -21,6 +21,20 @@ TEST_CASE("BloomFilter has no false negatives", "[bloom-filter]")
     REQUIRE_FALSE(filter.finish());
 }
 
+TEST_CASE("BloomFilter reports its bit array memory", "[bloom-filter]")
+{
+    lsmkv::BloomFilter filter(10, 7);
+    for(int i = 0; i < 10; i++)
+        REQUIRE(filter.add("key" + std::to_string(i)));
+    REQUIRE(filter.finish());
+    REQUIRE(filter.memoryUsage() == 13);
+    std::string encoded;
+    REQUIRE(filter.encode(encoded));
+    lsmkv::BloomFilter decoded;
+    REQUIRE(decoded.decode(encoded));
+    REQUIRE(decoded.memoryUsage() == 13);
+}
+
 TEST_CASE("BloomFilter encodes and decodes its complete state", "[bloom-filter]")
 {
     lsmkv::BloomFilter filter;

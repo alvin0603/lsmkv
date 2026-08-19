@@ -80,6 +80,20 @@ TEST_CASE("BlockCache updates entries and respects its capacity", "[block-cache]
     REQUIRE(disabled_cache.entryCount() == 0);
 }
 
+TEST_CASE("BlockCache evicts entries after its capacity changes", "[block-cache]")
+{
+    lsmkv::BlockCache cache(8);
+    cache.insert({1, 0}, "aaaa");
+    cache.insert({1, 4}, "bbbb");
+    cache.setCapacity(4);
+    REQUIRE(cache.capacity() == 4);
+    REQUIRE(cache.currentSize() == 4);
+    REQUIRE(cache.entryCount() == 1);
+    cache.setCapacity(0);
+    REQUIRE(cache.currentSize() == 0);
+    REQUIRE(cache.entryCount() == 0);
+}
+
 TEST_CASE("BlockCache separates identical offsets from different files", "[block-cache]")
 {
     lsmkv::BlockCache cache(8);
