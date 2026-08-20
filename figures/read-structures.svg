@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="980" viewBox="0 0 1000 980">
+<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#111"/>
+    </marker>
+</defs>
+<style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #111; }
+    .heading { font-size: 25px; font-weight: 700; }
+    .label { font-size: 19px; font-weight: 700; }
+    .text { font-size: 17px; }
+    .small { font-size: 15px; }
+    .mono { font-family: Consolas, "Liberation Mono", monospace; }
+    .box { fill: white; stroke: #111; stroke-width: 2; }
+    .light { fill: #f2f2f2; stroke: #111; stroke-width: 2; }
+    .line { fill: none; stroke: #111; stroke-width: 2; marker-end: url(#arrow); }
+    .read { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 9 6; marker-end: url(#arrow); }
+</style>
+
+<rect width="1000" height="980" fill="white"/>
+
+<text class="heading" x="35" y="38">Bloom filter</text>
+<line x1="35" y1="55" x2="965" y2="55" stroke="#111" stroke-width="1.5"/>
+
+<text class="label" x="35" y="160">build</text>
+
+<rect class="box" x="105" y="95" width="200" height="120"/>
+<text class="text" x="205" y="132" text-anchor="middle">sorted InternalKeys</text>
+<text class="small" x="205" y="165" text-anchor="middle">add each user_key once</text>
+<text class="small" x="205" y="191" text-anchor="middle">tombstones included</text>
+
+<rect class="box" x="350" y="95" width="170" height="120"/>
+<text class="text" x="435" y="140" text-anchor="middle">FNV-1a</text>
+<text class="small mono" x="435" y="174" text-anchor="middle">h1, h2</text>
+<text class="small" x="435" y="200" text-anchor="middle">two seeds</text>
+
+<rect class="box" x="565" y="95" width="230" height="120"/>
+<text class="text" x="680" y="132" text-anchor="middle">double hashing</text>
+<text class="small mono" x="680" y="165" text-anchor="middle">(h1 + i * h2) % m</text>
+<text class="small mono" x="680" y="191" text-anchor="middle">i = 0 ... k - 1</text>
+
+<rect class="light" x="840" y="95" width="125" height="120"/>
+<text class="text" x="902.5" y="128" text-anchor="middle">bit array</text>
+<rect class="box" x="852" y="150" width="20" height="32"/>
+<rect class="box" x="872" y="150" width="20" height="32"/>
+<rect class="box" x="892" y="150" width="20" height="32"/>
+<rect class="box" x="912" y="150" width="20" height="32"/>
+<rect class="box" x="932" y="150" width="20" height="32"/>
+<text class="small mono" x="862" y="172" text-anchor="middle">1</text>
+<text class="small mono" x="882" y="172" text-anchor="middle">0</text>
+<text class="small mono" x="902" y="172" text-anchor="middle">1</text>
+<text class="small mono" x="922" y="172" text-anchor="middle">1</text>
+<text class="small mono" x="942" y="172" text-anchor="middle">0</text>
+<text class="small mono" x="902.5" y="203" text-anchor="middle">m bits</text>
+
+<path class="line" d="M 315 155 L 340 155"/>
+<path class="line" d="M 530 155 L 555 155"/>
+<path class="line" d="M 805 155 L 830 155"/>
+
+<text class="label" x="35" y="348">get(key)</text>
+
+<rect class="box" x="120" y="290" width="180" height="110"/>
+<text class="text" x="210" y="330" text-anchor="middle">same hashes</text>
+<text class="small mono" x="210" y="363" text-anchor="middle">same k positions</text>
+
+<polygon class="box" points="385,290 580,290 625,345 580,400 385,400 340,345"/>
+<text class="text" x="482.5" y="338" text-anchor="middle">all selected bits</text>
+<text class="small" x="482.5" y="370" text-anchor="middle">are set?</text>
+
+<rect class="light" x="690" y="270" width="270" height="90"/>
+<text class="text" x="825" y="307" text-anchor="middle">skip this SSTable</text>
+<text class="small" x="825" y="336" text-anchor="middle">definite miss</text>
+
+<rect class="box" x="690" y="390" width="270" height="90"/>
+<text class="text" x="825" y="427" text-anchor="middle">search sparse index</text>
+<text class="small" x="825" y="456" text-anchor="middle">possible match</text>
+
+<path class="read" d="M 107 345 L 120 345"/>
+<path class="read" d="M 310 345 L 330 345"/>
+<path class="read" d="M 635 345 L 655 345 L 655 315 L 680 315"/>
+<text class="small" x="663" y="302">no</text>
+<path class="read" d="M 655 345 L 655 435 L 680 435"/>
+<text class="small" x="663" y="423">yes</text>
+
+<text class="small" x="130" y="515">Each SSTable reader keeps its Bloom filter and sparse index in memory.</text>
+
+<text class="heading" x="35" y="585">Shared block cache</text>
+<line x1="35" y1="602" x2="965" y2="602" stroke="#111" stroke-width="1.5"/>
+
+<rect class="box" x="35" y="645" width="250" height="115"/>
+<text class="text" x="160" y="680" text-anchor="middle">get() and SSTableIterator</text>
+<text class="small mono" x="160" y="713" text-anchor="middle">readDataBlock(offset, size)</text>
+<text class="small mono" x="160" y="739" text-anchor="middle">key = (file_id, offset)</text>
+
+<rect class="box" x="320" y="645" width="200" height="115"/>
+<text class="text mono" x="420" y="684" text-anchor="middle">unordered_map</text>
+<text class="small mono" x="420" y="717" text-anchor="middle">key -&gt; list iterator</text>
+
+<polygon class="box" points="590,645 700,645 745,702.5 700,760 590,760 545,702.5"/>
+<text class="text" x="640" y="696" text-anchor="middle">cache</text>
+<text class="small" x="640" y="727" text-anchor="middle">hit?</text>
+
+<rect class="light" x="790" y="645" width="175" height="115"/>
+<text class="text" x="877.5" y="680" text-anchor="middle">splice node</text>
+<text class="small" x="877.5" y="711" text-anchor="middle">to MRU front</text>
+<text class="small" x="877.5" y="737" text-anchor="middle">return block</text>
+
+<rect class="box" x="280" y="815" width="240" height="100"/>
+<text class="text" x="400" y="854" text-anchor="middle">FileBlockSource</text>
+<text class="small mono" x="400" y="887" text-anchor="middle">pread(offset, size)</text>
+
+<rect class="box" x="630" y="805" width="335" height="120"/>
+<text class="text mono" x="797.5" y="837" text-anchor="middle">std::list&lt;Entry&gt;</text>
+<rect class="light" x="650" y="853" width="80" height="38"/>
+<rect class="box" x="745" y="853" width="80" height="38"/>
+<rect class="box" x="840" y="853" width="80" height="38"/>
+<text class="small mono" x="690" y="878" text-anchor="middle">MRU</text>
+<text class="small mono" x="785" y="878" text-anchor="middle">block</text>
+<text class="small mono" x="880" y="878" text-anchor="middle">LRU</text>
+<text class="small" x="797.5" y="914" text-anchor="middle">new block at front; evict from back when full</text>
+
+<path class="read" d="M 295 702.5 L 310 702.5"/>
+<path class="read" d="M 520 702.5 L 535 702.5"/>
+<path class="read" d="M 755 702.5 L 780 702.5"/>
+<text class="small" x="767" y="689">hit</text>
+<path class="read" d="M 640 770 L 640 785 L 400 785 L 400 805"/>
+<text class="small" x="652" y="787">miss</text>
+<path class="line" d="M 530 865 L 620 865"/>
+<text class="small" x="575" y="835" text-anchor="middle">insert block</text>
+<text class="small" x="575" y="855" text-anchor="middle">+ map entry</text>
+
+<text class="small" x="35" y="958">All SSTable readers use the same cache. It stores data blocks. Indexes and Bloom filters stay in memory separately.</text>
+</svg>

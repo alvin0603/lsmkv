@@ -107,11 +107,13 @@
 <text class="small mono" x="445" y="1038" text-anchor="middle">value_size</text>
 <text class="small mono" x="600" y="1038" text-anchor="middle">value</text>
 
-<text class="label" x="735" y="982">Bloom block</text>
-<text class="text mono" x="735" y="1014">Fixed32 num_hashes</text>
-<text class="text mono" x="735" y="1042">Fixed64 num_bits</text>
-<text class="text mono" x="735" y="1070">bit_array[</text>
-<text class="text mono" x="735" y="1096">ceil(num_bits / 8)]</text>
+<text class="label" x="720" y="982">Bloom block</text>
+<text class="text mono" x="720" y="1014">num_hashes</text>
+<text class="text mono" x="955" y="1014" text-anchor="end">Fixed32</text>
+<text class="text mono" x="720" y="1042">num_bits</text>
+<text class="text mono" x="955" y="1042" text-anchor="end">Fixed64</text>
+<text class="text mono" x="720" y="1070">bit_array</text>
+<text class="small mono" x="740" y="1096">ceil(num_bits / 8) bytes</text>
 
 <text class="label" x="45" y="1127">index entry</text>
 <rect class="var" x="45" y="1142" width="140" height="70"/>
@@ -123,11 +125,13 @@
 <text class="small mono" x="487.5" y="1183" text-anchor="middle">block_offset</text>
 <text class="small mono" x="632.5" y="1183" text-anchor="middle">block_size</text>
 
-<text class="label" x="735" y="1127">footer</text>
-<text class="text mono" x="735" y="1159">index_offset | index_size</text>
-<text class="text mono" x="735" y="1187">bloom_offset | bloom_size</text>
-<text class="text mono" x="735" y="1213">| magic</text>
-<text class="small" x="735" y="1239">All five fields are Fixed64.</text>
+<text class="label" x="720" y="1127">footer</text>
+<text class="text mono" x="720" y="1159">index_offset</text>
+<text class="text mono" x="955" y="1159" text-anchor="end">index_size</text>
+<text class="text mono" x="720" y="1187">bloom_offset</text>
+<text class="text mono" x="955" y="1187" text-anchor="end">bloom_size</text>
+<text class="text mono" x="720" y="1215">magic</text>
+<text class="small" x="720" y="1241">5 Fixed64 fields = 40 bytes</text>
 
 <!-- Manifest -->
 <text class="heading" x="35" y="1280">Manifest snapshot</text>

@@ -69,11 +69,20 @@ add_executable(sstable_dump
 add_executable(lsmkv_bench
     bench/bench_main.cpp
 )
+add_executable(lsmkv_crash_fuzz
+    tools/crash_fuzz.cpp
+)
 target_link_libraries(sstable_dump PRIVATE lsmkv)
 target_link_libraries(lsmkv_bench PRIVATE lsmkv lsmkv_bench_support)
+target_link_libraries(lsmkv_crash_fuzz PRIVATE lsmkv)
 target_link_libraries(lsmkv_tests PRIVATE catch2 lsmkv lsmkv_bench_support)
 target_include_directories(lsmkv_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+target_include_directories(lsmkv_crash_fuzz PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 add_test(NAME lsmkv_tests COMMAND lsmkv_tests)
+add_test(NAME lsmkv_crash_fuzz_smoke COMMAND lsmkv_crash_fuzz --iterations 3 --seed 1)
+set_tests_properties(lsmkv_crash_fuzz_smoke PROPERTIES TIMEOUT 60)

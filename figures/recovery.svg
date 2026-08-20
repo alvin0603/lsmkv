@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1090" viewBox="0 0 1000 1090">
+<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#111"/>
+    </marker>
+</defs>
+<style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #111; }
+    .heading { font-size: 25px; font-weight: 700; }
+    .label { font-size: 19px; font-weight: 700; }
+    .text { font-size: 17px; }
+    .small { font-size: 15px; }
+    .mono { font-family: Consolas, "Liberation Mono", monospace; }
+    .box { fill: white; stroke: #111; stroke-width: 2; }
+    .light { fill: #f2f2f2; stroke: #111; stroke-width: 2; }
+    .line { fill: none; stroke: #111; stroke-width: 2; marker-end: url(#arrow); }
+</style>
+
+<rect width="1000" height="1120" fill="white"/>
+
+<text class="heading" x="35" y="38">Crash recovery test</text>
+<line x1="35" y1="55" x2="965" y2="55" stroke="#111" stroke-width="1.5"/>
+
+<rect class="box" x="35" y="95" width="190" height="110"/>
+<text class="label" x="130" y="135" text-anchor="middle">parent process</text>
+<text class="small mono" x="130" y="168" text-anchor="middle">pipe() and fork()</text>
+
+<rect class="box" x="275" y="95" width="190" height="110"/>
+<text class="label" x="370" y="135" text-anchor="middle">child opens DB</text>
+<text class="small mono" x="370" y="168" text-anchor="middle">kSyncEveryWrite</text>
+
+<rect class="box" x="515" y="95" width="190" height="110"/>
+<text class="label" x="610" y="135" text-anchor="middle">ready byte R</text>
+<text class="small" x="610" y="168" text-anchor="middle">sent through pipe</text>
+
+<rect class="box" x="755" y="95" width="210" height="110"/>
+<text class="label" x="860" y="135" text-anchor="middle">parent waits</text>
+<text class="small" x="860" y="168" text-anchor="middle">random 10 to 100 ms</text>
+
+<path class="line" d="M 235 150 L 265 150"/>
+<path class="line" d="M 475 150 L 505 150"/>
+<path class="line" d="M 715 150 L 745 150"/>
+
+<text class="heading" x="35" y="285">Writes before the kill</text>
+<line x1="35" y1="302" x2="965" y2="302" stroke="#111" stroke-width="1.5"/>
+
+<rect class="box" x="35" y="345" width="210" height="125"/>
+<text class="label" x="140" y="383" text-anchor="middle">operation ID n</text>
+<text class="small mono" x="140" y="416" text-anchor="middle">key_n</text>
+<text class="small" x="140" y="444" text-anchor="middle">value size: 512 bytes</text>
+
+<rect class="box" x="295" y="345" width="190" height="125"/>
+<text class="label mono" x="390" y="383" text-anchor="middle">put(key, value)</text>
+<text class="small" x="390" y="416" text-anchor="middle">WAL fsync</text>
+<text class="small" x="390" y="444" text-anchor="middle">returns true</text>
+
+<rect class="box" x="535" y="345" width="210" height="125"/>
+<text class="label" x="640" y="378" text-anchor="middle">oracle</text>
+<text class="small mono" x="640" y="408" text-anchor="middle">Fixed64(n)</text>
+<text class="small" x="640" y="436" text-anchor="middle">append and fsync</text>
+<text class="small" x="640" y="461" text-anchor="middle">outside the DB directory</text>
+
+<rect class="light" x="790" y="345" width="175" height="125"/>
+<text class="label mono" x="877.5" y="386" text-anchor="middle">SIGKILL</text>
+<text class="small" x="877.5" y="418" text-anchor="middle">writer stops</text>
+<text class="small" x="877.5" y="446" text-anchor="middle">at any point</text>
+
+<path class="line" d="M 255 407.5 L 285 407.5"/>
+<path class="line" d="M 495 407.5 L 525 407.5"/>
+<path class="line" d="M 640 480 L 640 515 L 140 515 L 140 480"/>
+<text class="small" x="390" y="507" text-anchor="middle">next operation</text>
+
+<path class="line" d="M 975 150 L 985 150 L 985 407.5 L 975 407.5"/>
+<text class="small" x="877.5" y="330" text-anchor="middle">after the delay</text>
+<text class="small" x="35" y="565">The signal may arrive during WAL work, flush, a Manifest update or compaction.</text>
+
+<text class="heading" x="35" y="685">Recovery check</text>
+<line x1="35" y1="702" x2="965" y2="702" stroke="#111" stroke-width="1.5"/>
+
+<rect class="box" x="35" y="745" width="205" height="125"/>
+<text class="label mono" x="137.5" y="784" text-anchor="middle">waitpid()</text>
+<text class="small" x="137.5" y="817" text-anchor="middle">child has exited</text>
+<text class="small" x="137.5" y="845" text-anchor="middle">LOCK is released</text>
+
+<rect class="box" x="285" y="745" width="205" height="125"/>
+<text class="label" x="387.5" y="784" text-anchor="middle">read oracle</text>
+<text class="small" x="387.5" y="817" text-anchor="middle">complete records of 8 bytes</text>
+<text class="small" x="387.5" y="845" text-anchor="middle">ignore partial tail</text>
+
+<rect class="box" x="535" y="745" width="205" height="125"/>
+<text class="label mono" x="637.5" y="784" text-anchor="middle">DB::open()</text>
+<text class="small" x="637.5" y="817" text-anchor="middle">WAL replay</text>
+<text class="small" x="637.5" y="845" text-anchor="middle">resume Manifest state</text>
+
+<rect class="box" x="785" y="745" width="180" height="125"/>
+<text class="label mono" x="875" y="784" text-anchor="middle">get() + iterator</text>
+<text class="small" x="875" y="817" text-anchor="middle">check keys and values</text>
+<text class="small" x="875" y="845" text-anchor="middle">check order</text>
+
+<path class="line" d="M 877.5 480 L 877.5 715 L 137.5 715 L 137.5 735"/>
+<path class="line" d="M 250 807.5 L 275 807.5"/>
+<path class="line" d="M 500 807.5 L 525 807.5"/>
+<path class="line" d="M 750 807.5 L 775 807.5"/>
+
+<rect class="light" x="120" y="915" width="760" height="90"/>
+<text class="text" x="500" y="954" text-anchor="middle">Every oracle entry must match.</text>
+<text class="text" x="500" y="984" text-anchor="middle">The DB may also contain operation last + 1.</text>
+
+<text class="small" x="35" y="1040">Each iteration uses a fresh DB. MemTable 1 KiB | L0 trigger 2.</text>
+<text class="small" x="35" y="1072">Scope: process crash. The kernel and page cache remain alive.</text>
+</svg>
