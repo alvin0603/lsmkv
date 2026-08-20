@@ -3,6 +3,7 @@
 #include <lsmkv/sstable_writer.h>
 #include "internal/file_names.h"
 #include "internal/compaction.h"
+#include "internal/compaction_policy.h"
 
 #include <fcntl.h>
 #include <filesystem>
@@ -28,6 +29,7 @@ namespace
 
 namespace lsmkv
 {
+    DB::DB() = default;
     DB::~DB()
     {
         close();
@@ -109,6 +111,7 @@ namespace lsmkv
         db->memtable_flush_size_ = memtable_flush_size;
         db->l0_compaction_trigger_ = l0_compaction_trigger;
         db->block_cache_ = std::make_shared<BlockCache>(block_cache_capacity);
+        db->compaction_policy_ = std::make_unique<TieredCompactionPolicy>();
         db->bloom_bits_per_key_ = bloom_bits_per_key;
         db->bloom_num_hashes_ = bloom_num_hashes;
         const std::filesystem::path directory{std::string(path)};
@@ -228,7 +231,7 @@ namespace lsmkv
         }
 
         // In case the SSTable have been up to limit
-        if(!db->compactL0())
+        if(!db->compact())
             return nullptr;
         return db;
     }
@@ -379,26 +382,34 @@ namespace lsmkv
         std::error_code remove_error;
         std::filesystem::remove(immutable_wal_path, remove_error);
         immutable_memtable_.reset();
-        if(!compactL0())
+        if(!compact())
             return handleFlushFailure();
         return true;
     }
-    bool DB::compactL0()
+    bool DB::compact()
     {
-        // find the L0
+        if(!compaction_policy_)
+            return false;
+        CompactionPlan plan;
+        if(!compaction_policy_->createPlan(manifest_state_.tables, l0_compaction_trigger_, plan))
+            return true;
+        if(plan.input_file_ids.empty())
+            return false;
+
         std::vector<const SSTableReader*> readers;
-        std::unordered_set<std::uint64_t> compacted_ids;
+        std::unordered_set<std::uint64_t> compacted_ids(plan.input_file_ids.begin(), plan.input_file_ids.end());
+        if(compacted_ids.size() != plan.input_file_ids.size())
+            return false;
         std::uint64_t input_bytes = 0;
         for(const OpenedTable& table : opened_tables_)
         {
-            if(table.metadata.level != 0)
+            if(!compacted_ids.contains(table.metadata.file_id))
                 continue;
             readers.push_back(table.reader.get());
-            compacted_ids.insert(table.metadata.file_id);
             input_bytes += table.metadata.file_size;
         }
-        if(readers.size() < l0_compaction_trigger_)
-            return true;
+        if(readers.size() != compacted_ids.size())
+            return false;
 
         // determine the new SSTable ID
         if(manifest_state_.next_file_id == std::numeric_limits<std::uint64_t>::max())
@@ -426,7 +437,7 @@ namespace lsmkv
         // create L1 metadata
         TableMetaData output_metadata;
         output_metadata.file_id = output_id;
-        output_metadata.level = 1;
+        output_metadata.level = plan.output_level;
         output_metadata.file_size = static_cast<std::uint64_t>(file_size);
         output_metadata.smallest_key = std::move(output.smallest_key);
         output_metadata.largest_key = std::move(output.largest_key);

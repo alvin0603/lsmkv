@@ -28,6 +28,7 @@ add_library(lsmkv STATIC
     src/sstable_reader.cpp
     src/manifest.cpp
     src/compaction.cpp
+    src/compaction_policy.cpp
     src/bloom_filter.cpp
     src/block_cache.cpp
 )

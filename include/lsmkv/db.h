@@ -19,6 +19,7 @@ namespace lsmkv
     inline constexpr std::size_t kDefaultMemTableSize = 4 * 1024 * 1024;
     inline constexpr std::size_t kDefaultL0CompactionTrigger = 4;
 
+    class CompactionPolicy;
     struct DBStats
     {
         std::uint64_t wal_bytes_written = 0;
@@ -55,7 +56,7 @@ namespace lsmkv
                 TableMetaData metadata;
                 std::unique_ptr<SSTableReader> reader;
             };
-            DB() = default; // ensure that DB can only be created through the open() 
+            DB(); // ensure that DB can only be created through the open()
             MemTable memtable_;
             std::unique_ptr<MemTable> immutable_memtable_;
             std::unique_ptr<WalWriter> wal_writer_; // destroyed when DB is closed
@@ -69,6 +70,7 @@ namespace lsmkv
             std::size_t memtable_flush_size_ = kDefaultMemTableSize;
             std::size_t l0_compaction_trigger_ = kDefaultL0CompactionTrigger;
             std::shared_ptr<BlockCache> block_cache_;
+            std::unique_ptr<CompactionPolicy> compaction_policy_;
             std::size_t bloom_bits_per_key_ = kDefaultBloomBitsPerKey;
             std::uint32_t bloom_num_hashes_ = kDefaultBloomHashCount;
             DBStats stats_;
@@ -79,6 +81,6 @@ namespace lsmkv
             bool flushMemTable();
             bool handleFlushFailure();
             void sortOpenedTables();
-            bool compactL0();
+            bool compact();
     };
 }

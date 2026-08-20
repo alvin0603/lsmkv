@@ -1,6 +1,6 @@
 # lsmkv
 
-I built `lsmkv` to understand a storage engine below its API. I wanted to follow a write from its log record, through an ordered table in memory, into immutable files, then recover the correct version after a crash. That meant working directly with partial writes, CRCs, file descriptors, `fsync`/`rename` ordering, and the read/write costs of an LSM tree.
+I built `lsmkv` to understand a storage engine below its API and implement it. I wanted to follow a write from its log record, through an ordered table in memory, into immutable files, then recover the correct version after a crash. That meant working directly with partial writes, CRCs, file descriptors, `fsync`/`rename` ordering, and the read/write costs of an LSM tree.
 
 `lsmkv` is an embedded storage engine for key/value pairs, written in C++20 and designed for one process. Its public API provides point reads, writes, deletes and full ordered iteration. The storage path includes WAL recovery, MemTable flush, immutable SSTables, a Manifest, synchronous compaction from L0 to L1, a Bloom filter for each SSTable and a shared LRU block cache. It runs on Linux, holds a nonblocking exclusive `flock` on `<db>/LOCK` for the lifetime of each open instance, and performs flush and compaction in the caller's thread.
 
@@ -56,15 +56,25 @@ Every flush adds another overlapping L0 file and increases the number of places 
 int main()
 {
     auto db = lsmkv::DB::open("data");
-    if(!db || !db->put("cat", "orange"))
+    if(!db)
+        return 1;
+
+    if(!db->put("shiba", "sesame") ||
+       !db->put("dog", "666"))
         return 1;
 
     std::string value;
-    if(db->get("cat", value) == lsmkv::LookupResult::kFound)
-        std::cout << value << '\n';
+    if(db->get("shiba", value) == lsmkv::LookupResult::kFound)
+        std::cout << "shiba = " << value << '\n';
+
+    if(!db->deleteKey("dog"))
+        return 1;
 
     for(auto it = db->newIterator(); it && it->valid(); it->next())
         std::cout << it->key() << " = " << it->value() << '\n';
+
+    db->close();
+    return 0;
 }
 ```
 

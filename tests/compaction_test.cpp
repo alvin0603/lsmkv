@@ -4,10 +4,51 @@
 #include <lsmkv/sstable_reader.h>
 #include <lsmkv/sstable_writer.h>
 #include "internal/compaction.h"
+#include "internal/compaction_policy.h"
 
 #include <filesystem>
 #include <string>
 #include <vector>
+
+TEST_CASE("Tiered compaction policy waits for the L0 trigger", "[compaction]")
+{
+    lsmkv::TableMetaData l0_table;
+    l0_table.file_id = 3;
+    l0_table.level = 0;
+    l0_table.file_size = 100;
+    lsmkv::TableMetaData l1_table;
+    l1_table.file_id = 5;
+    l1_table.level = 1;
+    l1_table.file_size = 200;
+    std::vector<lsmkv::TableMetaData> tables = {l0_table, l1_table};
+    lsmkv::TieredCompactionPolicy policy;
+    lsmkv::CompactionPlan plan;
+    REQUIRE_FALSE(policy.createPlan(tables, 2, plan));
+}
+
+TEST_CASE("Tiered compaction policy selects every L0 table", "[compaction]")
+{
+    lsmkv::TableMetaData first_l0_table;
+    first_l0_table.file_id = 3;
+    first_l0_table.level = 0;
+    first_l0_table.file_size = 100;
+    lsmkv::TableMetaData l1_table;
+    l1_table.file_id = 7;
+    l1_table.level = 1;
+    l1_table.file_size = 200;
+    lsmkv::TableMetaData second_l0_table;
+    second_l0_table.file_id = 5;
+    second_l0_table.level = 0;
+    second_l0_table.file_size = 150;
+    std::vector<lsmkv::TableMetaData> tables = {first_l0_table, l1_table, second_l0_table};
+    lsmkv::TieredCompactionPolicy policy;
+    lsmkv::CompactionPlan plan;
+    REQUIRE(policy.createPlan(tables, 2, plan));
+    REQUIRE(plan.input_file_ids.size() == 2);
+    REQUIRE(plan.input_file_ids[0] == 3);
+    REQUIRE(plan.input_file_ids[1] == 5);
+    REQUIRE(plan.output_level == 1);
+}
 
 TEST_CASE("Compaction writes newest entries and keeps tombstones", "[compaction]")
 {
