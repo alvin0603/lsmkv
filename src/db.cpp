@@ -100,7 +100,7 @@ namespace lsmkv
             return nullptr;
         return std::unique_ptr<DBIterator>(new DBIterator(this));
     }
-    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size, std::size_t l0_compaction_trigger, std::size_t block_cache_capacity, std::size_t bloom_bits_per_key, std::uint32_t bloom_num_hashes)
+    std::unique_ptr<DB> DB::open(std::string_view path, SyncMode sync_mode, std::size_t sync_interval, std::size_t memtable_flush_size, std::size_t l0_compaction_trigger, std::size_t block_cache_capacity, std::size_t bloom_bits_per_key, std::uint32_t bloom_num_hashes, CompactionStrategy compaction_strategy)
     {
         auto db = std::unique_ptr<DB>(new DB());
         if(memtable_flush_size == 0 || l0_compaction_trigger == 0 || bloom_bits_per_key == 0 || bloom_num_hashes == 0 || bloom_num_hashes > kMaxBloomHashCount)
@@ -111,9 +111,22 @@ namespace lsmkv
         db->memtable_flush_size_ = memtable_flush_size;
         db->l0_compaction_trigger_ = l0_compaction_trigger;
         db->block_cache_ = std::make_shared<BlockCache>(block_cache_capacity);
-        db->compaction_policy_ = std::make_unique<TieredCompactionPolicy>();
         db->bloom_bits_per_key_ = bloom_bits_per_key;
         db->bloom_num_hashes_ = bloom_num_hashes;
+        if(compaction_strategy == CompactionStrategy::kTiered)
+            db->compaction_policy_ = std::make_unique<TieredCompactionPolicy>();
+        else if(compaction_strategy == CompactionStrategy::kLeveled)
+        {
+            if(memtable_flush_size > std::numeric_limits<std::size_t>::max() / l0_compaction_trigger)
+                return nullptr;
+            std::size_t level_base_size = memtable_flush_size * l0_compaction_trigger;
+            if(level_base_size > std::numeric_limits<std::size_t>::max() / 10)
+                return nullptr;
+            level_base_size *= 10;
+            db->compaction_policy_ = std::make_unique<LeveledCompactionPolicy>(static_cast<std::uint64_t>(level_base_size));
+        }
+        else
+            return nullptr;
         const std::filesystem::path directory{std::string(path)};
         std::error_code error;
         std::filesystem::create_directories(directory, error);
@@ -388,6 +401,18 @@ namespace lsmkv
     }
     bool DB::compact()
     {
+        while(true)
+        {
+            bool compacted = false;
+            if(!compactOnce(compacted))
+                return false;
+            if(!compacted)
+                return true;
+        }
+    }
+    bool DB::compactOnce(bool& compacted)
+    {
+        compacted = false;
         if(!compaction_policy_)
             return false;
         CompactionPlan plan;
@@ -488,6 +513,7 @@ namespace lsmkv
             std::error_code remove_error;
             std::filesystem::remove(input_path, remove_error);
         }
+        compacted = true;
         return true;
     }
     bool DB::handleFlushFailure()

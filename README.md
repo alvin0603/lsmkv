@@ -2,7 +2,7 @@
 
 I built `lsmkv` to understand a storage engine below its API and implement it. I wanted to follow a write from its log record, through an ordered table in memory, into immutable files, then recover the correct version after a crash. That meant working directly with partial writes, CRCs, file descriptors, `fsync`/`rename` ordering, and the read/write costs of an LSM tree.
 
-`lsmkv` is an embedded storage engine for key/value pairs, written in C++20 and designed for one process. Its public API provides point reads, writes, deletes and full ordered iteration. The storage path includes WAL recovery, MemTable flush, immutable SSTables, a Manifest, synchronous compaction from L0 to L1, a Bloom filter for each SSTable and a shared LRU block cache. It runs on Linux, holds a nonblocking exclusive `flock` on `<db>/LOCK` for the lifetime of each open instance, and performs flush and compaction in the caller's thread.
+`lsmkv` is an embedded storage engine for key/value pairs, written in C++20 and designed for one process. Its public API provides point reads, writes, deletes and full ordered iteration. The storage path includes WAL recovery, MemTable flush, immutable SSTables, a Manifest, synchronous tiered and leveled compaction, a Bloom filter for each SSTable and a shared LRU block cache. It runs on Linux, holds a nonblocking exclusive `flock` on `<db>/LOCK` for the lifetime of each open instance, and performs flush and compaction in the caller's thread.
 
 ## How it works
 
@@ -26,8 +26,10 @@ An SSTable is written sequentially and never edited in place. New values and del
 active MemTable
     -> immutable MemTable
     -> Level 0 SSTables, newest file_id first
-    -> Level 1 SSTables, newest file_id first
+    -> Level 1, Level 2, ... in level order
 ```
+
+Within one level, SSTables are checked from the newest `file_id` to the oldest.
 
 Each `SSTableReader` loads its sparse index and Bloom filter when it opens. A point lookup uses the Bloom filter to skip files, searches the index with binary search for one candidate block, asks the shared cache, and then scans that block linearly.
 
@@ -43,7 +45,13 @@ Ordered iteration creates one iterator for every live MemTable and SSTable. `Mer
 
 The sequence number is stored in the `InternalKey`, so the newest operation for one user key sorts first. A tombstone has to remain as a record because an older put may still live in another immutable file.
 
-Every flush adds another overlapping L0 file and increases the number of places a read may have to check. When L0 reaches its trigger, `lsmkv` merges all L0 files into one new L1 SSTable. It keeps the newest entry among those L0 inputs and retains tombstones. Existing L1 files do not join this merge, so their key ranges may overlap. The new L1 file is committed in the Manifest before the old L0 files are removed.
+Every flush adds another overlapping L0 file and increases the number of places a read may have to check. A compaction policy chooses the input files and output level; the merge, Manifest commit and cleanup path stay the same for both policies.
+
+The tiered policy merges all L0 files into a new L1 SSTable when the trigger is reached. Existing L1 files do not join the merge, so their ranges may overlap.
+
+The leveled policy includes every L1 file that overlaps the combined L0 range. When a deeper level exceeds its byte limit, it picks the SSTable with the smallest `file_id` and merges it with all overlapping files in the next level. Starting at Level 1, the byte limit grows by 10x at each level and ranges within one level remain disjoint.
+
+The Manifest stores each table's level but does not store the selected policy, so a database directory should reopen with the same choice.
 
 ## Using it
 
@@ -88,15 +96,15 @@ g++ -std=c++20 -Iinclude demo.cpp build/liblsmkv.a -o demo
 
 [![InternalKey, WAL, SSTable and Manifest layouts](figures/storage-format.svg)](figures/storage-format.svg)
 
-Fixed32 and Fixed64 fields use little-endian encoding. Key and value lengths use Varint32. An `InternalKey` is encoded as:
+Fixed32 and Fixed64 fields use little-endian encoding. The WAL record length is Fixed32; key, value and `InternalKey` slices use a Varint32 length. An `InternalKey` is encoded as:
 
 ```text
 user_key || Fixed64((sequence << 8) | type)
 ```
 
-User keys sort in ascending order, while versions of the same key sort by descending sequence number. For one key, the first matching entry is its newest operation.
+The trailer reserves 56 bits for the sequence number and 8 bits for the value type, which gives a maximum sequence of `2^56 - 1`. User keys sort in ascending order, while versions of the same key sort by descending sequence number. For one key, the first matching entry is its newest operation.
 
-The WAL header stores payload length and CRC32. Replay stops at a partial header, partial payload, invalid length or CRC mismatch, then truncates the file to `last_valid_offset`. SSTable data is split into roughly 4 KiB blocks. The index stores each block's last `InternalKey`, offset and size; the footer is fixed at 40 bytes and tells the reader where the index and Bloom block begin.
+The WAL stores type and sequence as separate fields. Replay validates the 8-byte header, payload length, CRC and encoded fields, then rebuilds the `InternalKey` in the MemTable. An invalid or incomplete record truncates the log to `last_valid_offset`. SSTable data is split into roughly 4 KiB blocks. The index stores each block's last `InternalKey`, offset and size. Its 40-byte footer stores the offset and size of the index and Bloom blocks plus a format magic value.
 
 ## Crash recovery
 
@@ -113,7 +121,7 @@ write and fsync the new SSTable
 
 The new state is durable after the directory `fsync` succeeds. If execution stops earlier, recovery uses the complete Manifest that remains, removes SSTables absent from it, and replays WAL epochs newer than `durable_wal_epoch`. Old WAL and compaction inputs are kept until after the commit, so the data needed by the previous state is still present during that window.
 
-`open()` also validates the size and footer/index structure of every referenced SSTable, truncates an incomplete WAL tail, and resumes the global sequence number from the maximum sequence stored in the Manifest or replayed from WAL. If replay rebuilds a MemTable at or above its flush threshold, it is flushed before `open()` returns. The L0 trigger is checked again so an interrupted compaction can be retried from the committed state.
+`open()` also validates the size and footer/index structure of every referenced SSTable, truncates an incomplete WAL tail, and resumes the global sequence number from the maximum sequence stored in the Manifest or replayed from WAL. If replay rebuilds a MemTable at or above its flush threshold, it is flushed before `open()` returns. Compaction is checked again so unfinished work can be retried from the committed state.
 
 The file helpers loop over short reads and writes and retry `EINTR`; `fsync` uses the same retry rule. SSTable data blocks use `pread`, so every read names an explicit file offset instead of changing the descriptor's current position.
 
@@ -152,6 +160,7 @@ lsmkv/
 │   ├── memtable.cpp     ordered versions kept in memory
 │   ├── sstable_*.cpp    immutable table writer and reader
 │   ├── manifest.cpp     snapshot encoding and atomic replacement
+│   ├── compaction_policy.cpp  tiered and leveled input selection
 │   ├── *_iterator.cpp   k-way merge and public ordered scan
 │   ├── bloom_filter.cpp Bloom filter for each SSTable
 │   ├── block_cache.cpp  shared LRU with a byte limit

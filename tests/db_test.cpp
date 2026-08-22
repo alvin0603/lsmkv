@@ -1,9 +1,11 @@
 #include <catch_amalgamated.hpp>
 #include <lsmkv/db.h>
+#include <lsmkv/internal_key.h>
 #include <lsmkv/manifest.h>
 #include <lsmkv/sstable_reader.h>
 #include "internal/compaction.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -595,6 +597,112 @@ TEST_CASE("DB removes obsolete inputs after committed compaction", "[db][compact
         REQUIRE(value == "yellow");
         REQUIRE(db->get("cat", value) == lsmkv::LookupResult::kFound);
         REQUIRE(value == "black");
+    }
+    std::filesystem::remove_all(path);
+}
+
+TEST_CASE("DB leveled compaction keeps nonoverlapping L1 tables", "[db][compaction]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_leveled_compaction_test";
+    std::filesystem::remove_all(path);
+    {
+        auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncEveryWrite, 1, lsmkv::kDefaultMemTableSize, 2, lsmkv::kDefaultBlockCacheCapacity, lsmkv::kDefaultBloomBitsPerKey, lsmkv::kDefaultBloomHashCount, lsmkv::CompactionStrategy::kLeveled);
+        REQUIRE(db != nullptr);
+        REQUIRE(db->put("apple", "old"));
+        REQUIRE(db->put("cat", "black"));
+        REQUIRE(db->flush());
+        REQUIRE(db->put("banana", "yellow"));
+        REQUIRE(db->put("dog", "brown"));
+        REQUIRE(db->flush());
+        REQUIRE(db->put("shiba", "sesame"));
+        REQUIRE(db->put("tiger", "orange"));
+        REQUIRE(db->flush());
+        REQUIRE(db->put("wolf", "gray"));
+        REQUIRE(db->put("zebra", "white"));
+        REQUIRE(db->flush());
+        REQUIRE(db->put("apple", "new"));
+        REQUIRE(db->flush());
+        REQUIRE(db->deleteKey("cat"));
+        REQUIRE(db->flush());
+        std::string value;
+        REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "new");
+        REQUIRE(db->get("cat", value) == lsmkv::LookupResult::kDeleted);
+        REQUIRE(db->get("banana", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "yellow");
+        REQUIRE(db->get("shiba", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "sesame");
+    }
+    lsmkv::ManifestState state;
+    REQUIRE(lsmkv::loadManifest(path.string(), state));
+    REQUIRE(state.tables.size() == 2);
+    std::vector<std::pair<std::string, std::string>> ranges;
+    for(const lsmkv::TableMetaData& table: state.tables)
+    {
+        REQUIRE(table.level == 1);
+        lsmkv::ParsedInternalKey smallest_key;
+        lsmkv::ParsedInternalKey largest_key;
+        REQUIRE(lsmkv::parseInternalKey(table.smallest_key, smallest_key));
+        REQUIRE(lsmkv::parseInternalKey(table.largest_key, largest_key));
+        ranges.push_back({std::string(smallest_key.user_key), std::string(largest_key.user_key)});
+    }
+    std::sort(ranges.begin(), ranges.end());
+    REQUIRE(ranges[0].second < ranges[1].first);
+    {
+        auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncEveryWrite, 1, lsmkv::kDefaultMemTableSize, 2, lsmkv::kDefaultBlockCacheCapacity, lsmkv::kDefaultBloomBitsPerKey, lsmkv::kDefaultBloomHashCount, lsmkv::CompactionStrategy::kLeveled);
+        REQUIRE(db != nullptr);
+        std::string value;
+        REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "new");
+        REQUIRE(db->get("cat", value) == lsmkv::LookupResult::kDeleted);
+        REQUIRE(db->get("dog", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "brown");
+        REQUIRE(db->get("shiba", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "sesame");
+        REQUIRE(db->get("zebra", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "white");
+    }
+    std::filesystem::remove_all(path);
+}
+
+TEST_CASE("DB leveled compaction continues into deeper levels", "[db][compaction]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_leveled_deeper_level_test";
+    std::filesystem::remove_all(path);
+    {
+        auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncEveryWrite, 1, 1, 2, lsmkv::kDefaultBlockCacheCapacity, lsmkv::kDefaultBloomBitsPerKey, lsmkv::kDefaultBloomHashCount, lsmkv::CompactionStrategy::kLeveled);
+        REQUIRE(db != nullptr);
+        REQUIRE(db->put("apple", "red"));
+        REQUIRE(db->put("banana", "yellow"));
+        REQUIRE(db->put("cat", "black"));
+        REQUIRE(db->put("dog", "brown"));
+        std::string value;
+        REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "red");
+        REQUIRE(db->get("dog", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "brown");
+    }
+    lsmkv::ManifestState state;
+    REQUIRE(lsmkv::loadManifest(path.string(), state));
+    bool has_deeper_level = false;
+    for(const lsmkv::TableMetaData& table: state.tables)
+    {
+        if(table.level >= 2)
+            has_deeper_level = true;
+    }
+    REQUIRE(has_deeper_level);
+    {
+        auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncEveryWrite, 1, 1, 2, lsmkv::kDefaultBlockCacheCapacity, lsmkv::kDefaultBloomBitsPerKey, lsmkv::kDefaultBloomHashCount, lsmkv::CompactionStrategy::kLeveled);
+        REQUIRE(db != nullptr);
+        std::string value;
+        REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "red");
+        REQUIRE(db->get("banana", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "yellow");
+        REQUIRE(db->get("cat", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "black");
+        REQUIRE(db->get("dog", value) == lsmkv::LookupResult::kFound);
+        REQUIRE(value == "brown");
     }
     std::filesystem::remove_all(path);
 }

@@ -19,9 +19,17 @@ namespace lsmkv
             virtual ~CompactionPolicy() = default;
             virtual bool createPlan(const std::vector<TableMetaData>& tables, std::size_t l0_compaction_trigger, CompactionPlan& plan) const = 0;
     };
-    class TieredCompactionPolicy final : public CompactionPolicy
+    class TieredCompactionPolicy: public CompactionPolicy
     {
         public:
             bool createPlan(const std::vector<TableMetaData>& tables, std::size_t l0_compaction_trigger, CompactionPlan& plan) const override;
+    };
+    class LeveledCompactionPolicy: public CompactionPolicy
+    {
+        public:
+            explicit LeveledCompactionPolicy(std::uint64_t level_base_size);
+            bool createPlan(const std::vector<TableMetaData>& tables, std::size_t l0_compaction_trigger, CompactionPlan& plan) const override;
+        private:
+            std::uint64_t level_base_size_;
     };
 }

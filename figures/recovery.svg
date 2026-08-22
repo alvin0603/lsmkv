@@ -89,8 +89,8 @@
 
 <rect class="box" x="535" y="745" width="205" height="125"/>
 <text class="label mono" x="637.5" y="784" text-anchor="middle">DB::open()</text>
-<text class="small" x="637.5" y="817" text-anchor="middle">WAL replay</text>
-<text class="small" x="637.5" y="845" text-anchor="middle">resume Manifest state</text>
+<text class="small" x="637.5" y="817" text-anchor="middle">Manifest + SSTable checks</text>
+<text class="small" x="637.5" y="845" text-anchor="middle">GC orphans + replay WAL</text>
 
 <rect class="box" x="785" y="745" width="180" height="125"/>
 <text class="label mono" x="875" y="784" text-anchor="middle">get() + iterator</text>

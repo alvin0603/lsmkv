@@ -31,7 +31,7 @@
 <rect class="box" x="430" y="105" width="230" height="100"/>
 <text class="text" x="545" y="139" text-anchor="middle">SSTable order</text>
 <text class="small" x="545" y="168" text-anchor="middle">L0 newest, then</text>
-<text class="small" x="545" y="190" text-anchor="middle">L1 newest</text>
+<text class="small" x="545" y="190" text-anchor="middle">levels 1, 2, ...</text>
 
 <polygon class="box" points="740,105 920,105 960,155 920,205 740,205 700,155"/>
 <text class="text" x="830" y="148" text-anchor="middle">Bloom says</text>

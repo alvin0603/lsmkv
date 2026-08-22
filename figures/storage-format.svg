@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1600" viewBox="0 0 1000 1600">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1760" viewBox="0 0 1000 1760">
 <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#111"/>
@@ -17,7 +17,7 @@
     .line { fill: none; stroke: #111; stroke-width: 1.8; marker-end: url(#arrow); }
 </style>
 
-<rect width="1000" height="1600" fill="white"/>
+<rect width="1000" height="1760" fill="white"/>
 
 <!-- InternalKey -->
 <text class="heading" x="35" y="40">InternalKey</text>
@@ -34,12 +34,23 @@
 <text class="label mono" x="810" y="145" text-anchor="middle">trailer</text>
 <text class="small" x="810" y="174" text-anchor="middle">Fixed64, little-endian</text>
 
-<text class="text mono" x="45" y="240">trailer = (sequence &lt;&lt; 8) | type</text>
-<text class="text mono" x="45" y="272">type: kDelete=0, kPut=1</text>
-<text class="text mono" x="45" y="304">sort: user_key ASC, trailer DESC</text>
-<text class="text mono" x="45" y="344">"cat", seq=42, kPut: trailer=0x2A01; disk bytes=01 2A 00 00 00 00 00 00</text>
+<text class="label" x="45" y="260">trailer bits</text>
+<text class="small mono" x="545" y="218" text-anchor="middle">bits 63..8</text>
+<text class="small mono" x="910" y="218" text-anchor="middle">bits 7..0</text>
+<rect class="fixed" x="225" y="230" width="640" height="70"/>
+<rect class="fixed" x="865" y="230" width="90" height="70"/>
+<text class="label mono" x="545" y="260" text-anchor="middle">sequence</text>
+<text class="small" x="545" y="285" text-anchor="middle">56 bits, maximum 2^56 - 1</text>
+<text class="label mono" x="910" y="260" text-anchor="middle">type</text>
+<text class="small" x="910" y="285" text-anchor="middle">8 bits</text>
+
+<text class="text mono" x="45" y="335">trailer = (sequence &lt;&lt; 8) | type</text>
+<text class="text mono" x="45" y="367">type: kDelete=0, kPut=1</text>
+<text class="text mono" x="45" y="399">sort: user_key ASC, trailer DESC</text>
+<text class="text mono" x="45" y="431">"cat", seq=42, kPut: trailer=0x2A01; disk bytes=01 2A 00 00 00 00 00 00</text>
 
 <!-- WAL -->
+<g transform="translate(0 80)">
 <text class="heading" x="35" y="405">WAL record</text>
 <line x1="35" y1="421" x2="965" y2="421" stroke="#111" stroke-width="1.5"/>
 
@@ -48,10 +59,10 @@
 <rect class="field" x="445" y="455" width="510" height="90"/>
 <text class="label mono" x="135" y="492" text-anchor="middle">crc32</text>
 <text class="small" x="135" y="520" text-anchor="middle">Fixed32, 4 bytes</text>
-<text class="label mono" x="335" y="492" text-anchor="middle">payload_size</text>
+<text class="label mono" x="335" y="492" text-anchor="middle">length</text>
 <text class="small" x="335" y="520" text-anchor="middle">Fixed32, 4 bytes</text>
-<text class="label mono" x="700" y="492" text-anchor="middle">payload[payload_size]</text>
-<text class="small" x="700" y="520" text-anchor="middle">CRC coverage</text>
+<text class="label mono" x="700" y="492" text-anchor="middle">payload[length]</text>
+<text class="small" x="700" y="520" text-anchor="middle">CRC-32/IEEE coverage, length at most 64 MiB</text>
 
 <text class="text mono" x="45" y="612">payload:</text>
 <rect class="fixed" x="145" y="572" width="90" height="85"/>
@@ -92,7 +103,8 @@
 <text class="label mono" x="505" y="877" text-anchor="middle">sparse index</text>
 <text class="small" x="505" y="905" text-anchor="middle">one entry per data block</text>
 <text class="label mono" x="685" y="877" text-anchor="middle">Bloom block</text>
-<text class="small" x="685" y="905" text-anchor="middle">all user keys</text>
+<text class="small" x="685" y="900" text-anchor="middle">distinct user keys</text>
+<text class="small" x="685" y="920" text-anchor="middle">tombstones included</text>
 <text class="label mono" x="865" y="877" text-anchor="middle">footer</text>
 <text class="small" x="865" y="905" text-anchor="middle">40 bytes</text>
 <path class="line" d="M 930 829 L 930 840"/>
@@ -102,9 +114,11 @@
 <rect class="field" x="175" y="997" width="205" height="70"/>
 <rect class="var" x="380" y="997" width="130" height="70"/>
 <rect class="field" x="510" y="997" width="180" height="70"/>
-<text class="small mono" x="110" y="1038" text-anchor="middle">key_size</text>
+<text class="small mono" x="110" y="1027" text-anchor="middle">key_size</text>
+<text class="small mono" x="110" y="1049" text-anchor="middle">Varint32</text>
 <text class="small mono" x="277.5" y="1038" text-anchor="middle">InternalKey</text>
-<text class="small mono" x="445" y="1038" text-anchor="middle">value_size</text>
+<text class="small mono" x="445" y="1027" text-anchor="middle">value_size</text>
+<text class="small mono" x="445" y="1049" text-anchor="middle">Varint32</text>
 <text class="small mono" x="600" y="1038" text-anchor="middle">value</text>
 
 <text class="label" x="720" y="982">Bloom block</text>
@@ -120,20 +134,32 @@
 <rect class="field" x="185" y="1142" width="230" height="70"/>
 <rect class="fixed" x="415" y="1142" width="145" height="70"/>
 <rect class="fixed" x="560" y="1142" width="145" height="70"/>
-<text class="small mono" x="115" y="1183" text-anchor="middle">last_key_size</text>
+<text class="small mono" x="115" y="1172" text-anchor="middle">last_key_size</text>
+<text class="small mono" x="115" y="1194" text-anchor="middle">Varint32</text>
 <text class="small mono" x="300" y="1183" text-anchor="middle">last InternalKey</text>
 <text class="small mono" x="487.5" y="1183" text-anchor="middle">block_offset</text>
 <text class="small mono" x="632.5" y="1183" text-anchor="middle">block_size</text>
 
 <text class="label" x="720" y="1127">footer</text>
-<text class="text mono" x="720" y="1159">index_offset</text>
-<text class="text mono" x="955" y="1159" text-anchor="end">index_size</text>
-<text class="text mono" x="720" y="1187">bloom_offset</text>
-<text class="text mono" x="955" y="1187" text-anchor="end">bloom_size</text>
-<text class="text mono" x="720" y="1215">magic</text>
-<text class="small" x="720" y="1241">5 Fixed64 fields = 40 bytes</text>
+<text class="small" x="955" y="1127" text-anchor="end">byte order, 40 bytes total</text>
+<rect class="fixed" x="720" y="1142" width="235" height="24"/>
+<rect class="fixed" x="720" y="1166" width="235" height="24"/>
+<rect class="fixed" x="720" y="1190" width="235" height="24"/>
+<rect class="fixed" x="720" y="1214" width="235" height="24"/>
+<rect class="fixed" x="720" y="1238" width="235" height="24"/>
+<text class="small mono" x="730" y="1159">+0  index_offset</text>
+<text class="small mono" x="945" y="1159" text-anchor="end">8 bytes</text>
+<text class="small mono" x="730" y="1183">+8  index_size</text>
+<text class="small mono" x="945" y="1183" text-anchor="end">8 bytes</text>
+<text class="small mono" x="730" y="1207">+16 bloom_offset</text>
+<text class="small mono" x="945" y="1207" text-anchor="end">8 bytes</text>
+<text class="small mono" x="730" y="1231">+24 bloom_size</text>
+<text class="small mono" x="945" y="1231" text-anchor="end">8 bytes</text>
+<text class="small mono" x="730" y="1255">+32 magic</text>
+<text class="small mono" x="945" y="1255" text-anchor="end">8 bytes</text>
 
 <!-- Manifest -->
+<g transform="translate(0 40)">
 <text class="heading" x="35" y="1280">Manifest snapshot</text>
 <line x1="35" y1="1296" x2="965" y2="1296" stroke="#111" stroke-width="1.5"/>
 
@@ -147,7 +173,7 @@
 <text class="small mono" x="225" y="1374" text-anchor="middle">next_file_id:8</text>
 <text class="small mono" x="367.5" y="1374" text-anchor="middle">last_sequence:8</text>
 <text class="small mono" x="535" y="1374" text-anchor="middle">durable_wal_epoch:8</text>
-<text class="small mono" x="700" y="1374" text-anchor="middle">table_count:4</text>
+<text class="small mono" x="700" y="1374" text-anchor="middle">num_tables:4</text>
 <text class="small mono" x="862.5" y="1374" text-anchor="middle">table entries...</text>
 
 <text class="label" x="45" y="1455">table entry</text>
@@ -160,14 +186,18 @@
 <text class="small mono" x="205" y="1514" text-anchor="middle">level:4</text>
 <text class="small mono" x="322.5" y="1514" text-anchor="middle">file_size:8</text>
 <text class="small mono" x="531.25" y="1503" text-anchor="middle">smallest InternalKey</text>
-<text class="small mono" x="531.25" y="1527" text-anchor="middle">length + bytes</text>
+<text class="small mono" x="531.25" y="1527" text-anchor="middle">Varint32 + bytes</text>
 <text class="small mono" x="813.75" y="1503" text-anchor="middle">largest InternalKey</text>
-<text class="small mono" x="813.75" y="1527" text-anchor="middle">length + bytes</text>
+<text class="small mono" x="813.75" y="1527" text-anchor="middle">Varint32 + bytes</text>
 
-<rect class="fixed" x="45" y="1570" width="18" height="18"/>
-<text class="small" x="73" y="1585">fixed-width field</text>
-<rect class="var" x="265" y="1570" width="18" height="18"/>
-<text class="small" x="293" y="1585">Varint length or variable-size field</text>
-<rect class="field" x="650" y="1570" width="18" height="18"/>
-<text class="small" x="678" y="1585">raw bytes or repeated entries</text>
+<text class="small" x="45" y="1580">The range keys let compaction test overlap without reading any data block.</text>
+
+<rect class="fixed" x="45" y="1610" width="18" height="18"/>
+<text class="small" x="73" y="1625">fixed-width field</text>
+<rect class="var" x="265" y="1610" width="18" height="18"/>
+<text class="small" x="293" y="1625">Varint length or variable-size field</text>
+<rect class="field" x="650" y="1610" width="18" height="18"/>
+<text class="small" x="678" y="1625">raw bytes or repeated entries</text>
+</g>
+</g>
 </svg>

@@ -50,6 +50,93 @@ TEST_CASE("Tiered compaction policy selects every L0 table", "[compaction]")
     REQUIRE(plan.output_level == 1);
 }
 
+TEST_CASE("Leveled compaction policy includes overlapping L1 tables", "[compaction]")
+{
+    lsmkv::TableMetaData first_l0_table;
+    first_l0_table.file_id = 10;
+    first_l0_table.level = 0;
+    first_l0_table.file_size = 100;
+    REQUIRE(lsmkv::appendInternalKey(first_l0_table.smallest_key, "apple", 50, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(first_l0_table.largest_key, "mango", 40, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData first_l1_table;
+    first_l1_table.file_id = 5;
+    first_l1_table.level = 1;
+    first_l1_table.file_size = 200;
+    REQUIRE(lsmkv::appendInternalKey(first_l1_table.smallest_key, "banana", 30, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(first_l1_table.largest_key, "fish", 20, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData second_l0_table;
+    second_l0_table.file_id = 12;
+    second_l0_table.level = 0;
+    second_l0_table.file_size = 100;
+    REQUIRE(lsmkv::appendInternalKey(second_l0_table.smallest_key, "horse", 60, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(second_l0_table.largest_key, "zebra", 55, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData second_l1_table;
+    second_l1_table.file_id = 7;
+    second_l1_table.level = 1;
+    second_l1_table.file_size = 200;
+    REQUIRE(lsmkv::appendInternalKey(second_l1_table.smallest_key, "orange", 15, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(second_l1_table.largest_key, "tiger", 10, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData untouched_l1_table;
+    untouched_l1_table.file_id = 9;
+    untouched_l1_table.level = 1;
+    untouched_l1_table.file_size = 200;
+    REQUIRE(lsmkv::appendInternalKey(untouched_l1_table.smallest_key, "zoo", 8, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(untouched_l1_table.largest_key, "zoo", 7, lsmkv::ValueType::kPut));
+    std::vector<lsmkv::TableMetaData> tables = {first_l0_table, first_l1_table, second_l0_table, second_l1_table, untouched_l1_table};
+    lsmkv::LeveledCompactionPolicy policy(1000);
+    lsmkv::CompactionPlan plan;
+    REQUIRE(policy.createPlan(tables, 2, plan));
+    REQUIRE(plan.input_file_ids.size() == 4);
+    REQUIRE(plan.input_file_ids[0] == 10);
+    REQUIRE(plan.input_file_ids[1] == 12);
+    REQUIRE(plan.input_file_ids[2] == 5);
+    REQUIRE(plan.input_file_ids[3] == 7);
+    REQUIRE(plan.output_level == 1);
+}
+
+TEST_CASE("Leveled compaction policy moves an overfull level to the next level", "[compaction]")
+{
+    lsmkv::TableMetaData first_l2_table;
+    first_l2_table.file_id = 20;
+    first_l2_table.level = 2;
+    first_l2_table.file_size = 6000;
+    REQUIRE(lsmkv::appendInternalKey(first_l2_table.smallest_key, "cat", 50, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(first_l2_table.largest_key, "horse", 40, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData second_l2_table;
+    second_l2_table.file_id = 21;
+    second_l2_table.level = 2;
+    second_l2_table.file_size = 5000;
+    REQUIRE(lsmkv::appendInternalKey(second_l2_table.smallest_key, "orange", 30, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(second_l2_table.largest_key, "zebra", 20, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData first_l3_table;
+    first_l3_table.file_id = 3;
+    first_l3_table.level = 3;
+    first_l3_table.file_size = 200;
+    REQUIRE(lsmkv::appendInternalKey(first_l3_table.smallest_key, "apple", 15, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(first_l3_table.largest_key, "dog", 10, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData second_l3_table;
+    second_l3_table.file_id = 6;
+    second_l3_table.level = 3;
+    second_l3_table.file_size = 200;
+    REQUIRE(lsmkv::appendInternalKey(second_l3_table.smallest_key, "fish", 8, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(second_l3_table.largest_key, "mango", 7, lsmkv::ValueType::kPut));
+    lsmkv::TableMetaData untouched_l3_table;
+    untouched_l3_table.file_id = 8;
+    untouched_l3_table.level = 3;
+    untouched_l3_table.file_size = 200;
+    REQUIRE(lsmkv::appendInternalKey(untouched_l3_table.smallest_key, "pear", 6, lsmkv::ValueType::kPut));
+    REQUIRE(lsmkv::appendInternalKey(untouched_l3_table.largest_key, "zoo", 5, lsmkv::ValueType::kPut));
+    std::vector<lsmkv::TableMetaData> tables = {first_l2_table, second_l2_table, first_l3_table, second_l3_table, untouched_l3_table};
+    lsmkv::LeveledCompactionPolicy policy(1000);
+    lsmkv::CompactionPlan plan;
+    REQUIRE(policy.createPlan(tables, 2, plan));
+    REQUIRE(plan.input_file_ids.size() == 3);
+    REQUIRE(plan.input_file_ids[0] == 20);
+    REQUIRE(plan.input_file_ids[1] == 3);
+    REQUIRE(plan.input_file_ids[2] == 6);
+    REQUIRE(plan.output_level == 3);
+}
+
 TEST_CASE("Compaction writes newest entries and keeps tombstones", "[compaction]")
 {
     const std::filesystem::path directory = std::filesystem::temp_directory_path() / "lsmkv_compaction_test";

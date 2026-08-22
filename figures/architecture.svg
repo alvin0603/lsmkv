@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1050" viewBox="0 0 1000 1050">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1100" viewBox="0 0 1000 1100">
 <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#111"/>
@@ -16,7 +16,7 @@
     .line { fill: none; stroke: #111; stroke-width: 2; marker-end: url(#arrow); }
 </style>
 
-<rect width="1000" height="1050" fill="white"/>
+<rect width="1000" height="1100" fill="white"/>
 
 <text class="heading" x="35" y="38">Write and flush</text>
 <line x1="35" y1="55" x2="965" y2="55" stroke="#111" stroke-width="1.5"/>
@@ -77,36 +77,61 @@
 <text class="text" x="50" y="535">2. insert the same operation into the ordered MemTable</text>
 <text class="text" x="50" y="565">The old WAL is removed after the new SSTable is published by MANIFEST.</text>
 
-<text class="heading" x="35" y="625">File lifecycle and L0 compaction</text>
+<text class="heading" x="35" y="625">Compaction</text>
 <line x1="35" y1="642" x2="965" y2="642" stroke="#111" stroke-width="1.5"/>
 
-<path class="box" d="M 60 690 L 260 690 L 320 750 L 320 810 L 60 810 Z"/>
-<path d="M 260 690 L 260 750 L 320 750" fill="none" stroke="#111" stroke-width="2"/>
-<text class="label" x="190" y="748" text-anchor="middle">MANIFEST</text>
-<text class="small mono" x="190" y="777" text-anchor="middle">live files + epochs</text>
-<text class="small" x="190" y="800" text-anchor="middle">commit point</text>
+<rect class="box" x="35" y="690" width="165" height="130"/>
+<text class="label" x="117.5" y="730" text-anchor="middle">Level pressure</text>
+<text class="small" x="117.5" y="764" text-anchor="middle">L0 files accumulate</text>
+<text class="small" x="117.5" y="792" text-anchor="middle">or a level exceeds</text>
+<text class="small" x="117.5" y="814" text-anchor="middle">its size limit</text>
 
-<rect class="box" x="680" y="700" width="250" height="100"/>
-<text class="label" x="805" y="741" text-anchor="middle">Level 0</text>
-<text class="small" x="805" y="772" text-anchor="middle">overlapping, newest first</text>
+<rect class="box" x="225" y="690" width="170" height="130"/>
+<text class="label" x="310" y="730" text-anchor="middle">Choose inputs</text>
+<text class="small" x="310" y="764" text-anchor="middle">apply selected strategy</text>
+<text class="small" x="310" y="792" text-anchor="middle">include the required</text>
+<text class="small" x="310" y="814" text-anchor="middle">overlapping ranges</text>
 
-<polygon class="light" points="690,845 910,845 950,895 910,945 690,945 650,895"/>
-<text class="label" x="800" y="887" text-anchor="middle">k-way merge</text>
-<text class="small" x="800" y="918" text-anchor="middle">keep newest + tombstone</text>
+<polygon class="light" points="445,690 580,690 610,755 580,820 445,820 420,755"/>
+<text class="label" x="515" y="730" text-anchor="middle">k-way merge</text>
+<text class="small" x="515" y="764" text-anchor="middle">highest sequence</text>
+<text class="small" x="515" y="792" text-anchor="middle">for each user key</text>
+<text class="small" x="515" y="814" text-anchor="middle">retain tombstone</text>
 
-<rect class="box" x="60" y="845" width="260" height="100"/>
-<text class="label" x="190" y="886" text-anchor="middle">Level 1</text>
-<text class="small" x="190" y="917" text-anchor="middle">one output per trigger</text>
+<rect class="box" x="635" y="690" width="140" height="130"/>
+<text class="label" x="705" y="730" text-anchor="middle">new .sst</text>
+<text class="small" x="705" y="764" text-anchor="middle">next level</text>
+<text class="small" x="705" y="795" text-anchor="middle">write + fsync</text>
 
-<path class="line" d="M 320 750 L 670 750"/>
-<text class="small" x="495" y="738" text-anchor="middle">publish</text>
-<path class="line" d="M 805 800 L 805 835"/>
-<path class="line" d="M 640 895 L 330 895"/>
-<path class="line" d="M 190 835 L 190 820"/>
-<text class="small" x="210" y="832">commit</text>
+<path class="box" d="M 790 690 L 925 690 L 965 730 L 965 820 L 790 820 Z"/>
+<path d="M 925 690 L 925 730 L 965 730" fill="none" stroke="#111" stroke-width="2"/>
+<text class="label" x="850" y="735" text-anchor="middle">MANIFEST</text>
+<text class="small" x="877.5" y="765" text-anchor="middle">replace live file set</text>
+<text class="small" x="877.5" y="790" text-anchor="middle">atomically</text>
+<text class="small" x="877.5" y="813" text-anchor="middle">commit point</text>
 
-<text class="text" x="60" y="985">Remove L0 inputs only after the MANIFEST commit.</text>
+<path class="line" d="M 200 755 L 225 755"/>
+<path class="line" d="M 395 755 L 420 755"/>
+<path class="line" d="M 610 755 L 635 755"/>
+<path class="line" d="M 775 755 L 790 755"/>
 
-<line x1="60" y1="1020" x2="130" y2="1020" stroke="#111" stroke-width="2" marker-end="url(#arrow)"/>
-<text class="small" x="150" y="1026">write / file lifecycle</text>
+<rect class="box" x="35" y="870" width="350" height="125"/>
+<text class="label" x="210" y="908" text-anchor="middle">Tiered</text>
+<text class="small" x="210" y="942" text-anchor="middle">merge accumulated L0 files</text>
+<text class="small" x="210" y="972" text-anchor="middle">output ranges may overlap</text>
+
+<rect class="box" x="410" y="870" width="365" height="125"/>
+<text class="label" x="592.5" y="908" text-anchor="middle">Leveled</text>
+<text class="small" x="592.5" y="938" text-anchor="middle">merge the chosen range with overlaps</text>
+<text class="small" x="592.5" y="963" text-anchor="middle">in the next level</text>
+<text class="small" x="592.5" y="988" text-anchor="middle">L1 and deeper ranges stay disjoint</text>
+
+<rect class="box" x="790" y="870" width="175" height="125"/>
+<text class="text" x="877.5" y="915" text-anchor="middle">delete inputs</text>
+<text class="small" x="877.5" y="951" text-anchor="middle">only after the</text>
+<text class="small" x="877.5" y="977" text-anchor="middle">commit</text>
+<path class="line" d="M 877.5 820 L 877.5 870"/>
+
+<line x1="35" y1="1055" x2="105" y2="1055" stroke="#111" stroke-width="2" marker-end="url(#arrow)"/>
+<text class="small" x="125" y="1061">compaction and file lifecycle</text>
 </svg>

@@ -19,6 +19,11 @@ namespace lsmkv
     inline constexpr std::size_t kDefaultMemTableSize = 4 * 1024 * 1024;
     inline constexpr std::size_t kDefaultL0CompactionTrigger = 4;
 
+    enum class CompactionStrategy
+    {
+        kTiered,
+        kLeveled
+    };
     class CompactionPolicy;
     struct DBStats
     {
@@ -32,7 +37,7 @@ namespace lsmkv
     class DB
     {
         public:
-            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize, std::size_t l0_compaction_trigger = kDefaultL0CompactionTrigger, std::size_t block_cache_capacity = kDefaultBlockCacheCapacity, std::size_t bloom_bits_per_key = kDefaultBloomBitsPerKey, std::uint32_t bloom_num_hashes = kDefaultBloomHashCount);
+            static std::unique_ptr<DB> open(std::string_view path, SyncMode sync_mode = SyncMode::kSyncEveryWrite, std::size_t sync_interval = 1, std::size_t memtable_flush_size = kDefaultMemTableSize, std::size_t l0_compaction_trigger = kDefaultL0CompactionTrigger, std::size_t block_cache_capacity = kDefaultBlockCacheCapacity, std::size_t bloom_bits_per_key = kDefaultBloomBitsPerKey, std::uint32_t bloom_num_hashes = kDefaultBloomHashCount, CompactionStrategy compaction_strategy = CompactionStrategy::kTiered);
             ~DB();
             DB(const DB&) = delete;
             DB& operator=(const DB&) = delete;
@@ -82,5 +87,6 @@ namespace lsmkv
             bool handleFlushFailure();
             void sortOpenedTables();
             bool compact();
+            bool compactOnce(bool& compacted);
     };
 }
