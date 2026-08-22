@@ -1,4 +1,5 @@
 #include <catch_amalgamated.hpp>
+#include <lsmkv/bloom_filter.h>
 #include <lsmkv/db.h>
 #include <lsmkv/internal_key.h>
 #include <lsmkv/manifest.h>
@@ -395,6 +396,30 @@ TEST_CASE("DB reports shared block cache statistics", "[db][block-cache]")
     REQUIRE(db->blockCacheMissCount() == 1);
     db->close();
     REQUIRE(db->blockCacheHitRate() == 0.5);
+    std::filesystem::remove_all(path);
+}
+
+TEST_CASE("DB skips SSTables outside the requested key range", "[db][block-cache]")
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() / "lsmkv_db_key_range_test";
+    std::filesystem::remove_all(path);
+    lsmkv::BloomFilter false_positive_filter(1, 1);
+    REQUIRE(false_positive_filter.add("shiba9"));
+    REQUIRE(false_positive_filter.finish());
+    REQUIRE(false_positive_filter.mayContain("apple"));
+    auto db = lsmkv::DB::open(path.string(), lsmkv::SyncMode::kSyncEveryWrite, 1, lsmkv::kDefaultMemTableSize, lsmkv::kDefaultL0CompactionTrigger, 1024, 1, 1);
+    REQUIRE(db != nullptr);
+    REQUIRE(db->put("apple", "red"));
+    REQUIRE(db->flush());
+    REQUIRE(db->put("shiba9", "sesame"));
+    REQUIRE(db->flush());
+    std::string value;
+    REQUIRE(db->get("apple", value) == lsmkv::LookupResult::kFound);
+    REQUIRE(value == "red");
+    REQUIRE(db->blockCacheMissCount() == 1);
+    REQUIRE(db->get("zebra", value) == lsmkv::LookupResult::kNotFound);
+    REQUIRE(db->blockCacheMissCount() == 1);
+    db->close();
     std::filesystem::remove_all(path);
 }
 

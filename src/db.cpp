@@ -25,6 +25,14 @@ namespace
         std::uint64_t epoch;
         std::filesystem::path path;
     };
+    bool userKeyInTableRange(const lsmkv::TableMetaData& table, std::string_view user_key)
+    {
+        lsmkv::ParsedInternalKey smallest_key;
+        lsmkv::ParsedInternalKey largest_key;
+        if(!lsmkv::parseInternalKey(table.smallest_key, smallest_key) || !lsmkv::parseInternalKey(table.largest_key, largest_key))
+            return true;
+        return smallest_key.user_key <= user_key && user_key <= largest_key.user_key;
+    }
 }
 
 namespace lsmkv
@@ -280,6 +288,8 @@ namespace lsmkv
         }
         for(const OpenedTable& table : opened_tables_)
         {
+            if(!userKeyInTableRange(table.metadata, user_key))
+                continue;
             result = table.reader->get(user_key, value);
             if(result != LookupResult::kNotFound)
                 return result;
